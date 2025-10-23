@@ -31,6 +31,9 @@ qd[3][0] = 3.141592653589793-atan((sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1
 #define ADDR_OPERATING_MODE         11
 #define ADDR_TORQUE_ENABLE          64
 #define ADDR_GOAL_CURRENT           102
+#define ADDR_GOAL_POSITION          116  // For gripper position control
+#define ADDR_PROFILE_ACCELERATION   108
+#define ADDR_PROFILE_VELOCITY       112
 #define ADDR_CURRENT_LIMIT          38
 #define ADDR_PRESENT_CURRENT        126
 #define ADDR_PRESENT_VELOCITY       128
@@ -47,7 +50,7 @@ qd[3][0] = 3.141592653589793-atan((sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1
 #define DXL2_ID                         12
 #define DXL3_ID                         13
 #define DXL4_ID                         14
-//#define DXL5_ID                       15  
+#define GRIPPER_ID                      15  // Gripper servo
 #define BAUDRATE                        4500000
 #define DEVICENAME                      "/dev/ttyUSB0"
 #define TORQUE_ENABLE                   1                   // Value for enabling the torque
@@ -56,6 +59,15 @@ qd[3][0] = 3.141592653589793-atan((sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1
 
 #define curr_peak 330
 #define curr_max 290
+
+// Gripper current settings (units: Dynamixel current units)
+// Limit the squeezing force so closing against an object doesn't overdrive
+#define GRIPPER_CURR_LIMIT              260   // Safety cap (max allowed)
+#define GRIPPER_CURR_OPEN               240   // Current for opening move (bump to overcome friction)
+#define GRIPPER_CURR_CLOSE              180   // Current for closing/holding an object
+#define GRIPPER_OPEN_TICKS              1400  // Opening travel in ticks (~120°). Adjust if needed.
+// Direction for OPEN relative to CLOSED: -1 means open = closed - 90deg; +1 means closed + 90deg
+#define GRIPPER_OPEN_DIR                (-1)
 
 void OMDyn(const double* q, const double* dq, double* M, double* phib);
 
@@ -70,6 +82,12 @@ static HHD g_hDevice = HD_INVALID_HANDLE;
 static std::atomic<bool> g_hSampleReady{false};
 static HapticSample g_hSample;
 static std::atomic<int> g_hButtons{0};
+
+// --- Gripper global state (available across init and loop) ---
+static bool gripper_calibrated = false;
+static int32_t gripper_closed_pos_ticks = 0;
+static int32_t gripper_open_pos_ticks = 0; // updated after calibration
+static int gripper_open_dir_state = GRIPPER_OPEN_DIR; // runtime-adjustable open direction
 
 static HDCallbackCode HDCALLBACK hapticsServoCallback(void* /*user*/){
   hdBeginFrame(g_hDevice);
@@ -294,6 +312,58 @@ int main(int argc, char* argv[]){
   else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
   else printf("Succeeded%d limiting Current Max.\n",DXL4_ID);
 
+  // Configure Gripper (ID 15) in Current-based Position Control Mode (mode 5)
+  // This lets us set a goal position with a current limit for gentle grasping
+  uint8_t gripper_mode = 5;  // Current-based Position mode
+  dxl_comm_result=packetHandler->write1ByteTxRx(portHandler,GRIPPER_ID,ADDR_OPERATING_MODE,gripper_mode,&dxl_error);
+  if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
+  else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
+  else printf("Succeeded Gripper ID:%d enabling Current-based Position Mode.\n",GRIPPER_ID);
+  
+  // Verify mode set; if not supported, fallback to Position Mode (3)
+  {
+    uint8_t read_mode = 0; uint8_t dxl_err_rd = 0; uint32_t rd = 0; // placeholder for API signature
+    // Using read1ByteTxRx for operating mode
+    int dxl_ret_rd = packetHandler->read1ByteTxRx(portHandler, GRIPPER_ID, ADDR_OPERATING_MODE, &read_mode, &dxl_err_rd);
+    if(dxl_ret_rd!=COMM_SUCCESS) printf("%s\n", packetHandler->getTxRxResult(dxl_ret_rd));
+    else if(dxl_err_rd!=0) printf("%s\n", packetHandler->getRxPacketError(dxl_err_rd));
+    else printf("Gripper reported operating mode: %u\n", (unsigned)read_mode);
+    if(read_mode != 5){
+      uint8_t fallback_mode = 3;
+      dxl_comm_result=packetHandler->write1ByteTxRx(portHandler,GRIPPER_ID,ADDR_OPERATING_MODE,fallback_mode,&dxl_error);
+      if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
+      else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
+      else printf("FALLBACK: Gripper ID:%d set to Position Mode (3).\n",GRIPPER_ID);
+    }
+  }
+  
+  // Set gripper return delay to zero
+  dxl_comm_result=packetHandler->write1ByteTxRx(portHandler,GRIPPER_ID,ADDR_RETURN_DELAY,0,&dxl_error);
+  if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
+  else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
+  else printf("Succeeded Gripper ID:%d setting delay to zero.\n",GRIPPER_ID);
+
+  // Limit maximum current for gripper for safety (gentle squeeze)
+  uint16_t c_limit_gr = GRIPPER_CURR_LIMIT;
+  dxl_comm_result=packetHandler->write2ByteTxRx(portHandler,GRIPPER_ID,ADDR_CURRENT_LIMIT,c_limit_gr,&dxl_error);
+  if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
+  else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
+  else printf("Succeeded Gripper ID:%d limiting Current Max to %u.\n",GRIPPER_ID,c_limit_gr);
+
+  // Set motion profile for smoother, reliable moves
+  {
+  uint8_t dxl_err_prof = 0;
+  uint32_t prof_acc = 150;   // more aggressive
+  uint32_t prof_vel = 400;   // more aggressive
+    int r1 = packetHandler->write4ByteTxRx(portHandler, GRIPPER_ID, ADDR_PROFILE_ACCELERATION, prof_acc, &dxl_err_prof);
+    if(r1!=COMM_SUCCESS) printf("%s\n", packetHandler->getTxRxResult(r1));
+    else if(dxl_err_prof!=0) printf("%s\n", packetHandler->getRxPacketError(dxl_err_prof));
+    int r2 = packetHandler->write4ByteTxRx(portHandler, GRIPPER_ID, ADDR_PROFILE_VELOCITY, prof_vel, &dxl_err_prof);
+    if(r2!=COMM_SUCCESS) printf("%s\n", packetHandler->getTxRxResult(r2));
+    else if(dxl_err_prof!=0) printf("%s\n", packetHandler->getRxPacketError(dxl_err_prof));
+    else printf("Gripper profile set: acc=%u, vel=%u\n", (unsigned)prof_acc, (unsigned)prof_vel);
+  }
+
   dxl_comm_result=packetHandler->write1ByteTxRx(portHandler,DXL1_ID,ADDR_TORQUE_ENABLE,TORQUE_ENABLE,&dxl_error);
   if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
   else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
@@ -310,6 +380,44 @@ int main(int argc, char* argv[]){
   if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
   else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
   else printf("Dynamixel#%d has been successfully connected \n",DXL4_ID);
+  
+  // Enable torque for gripper
+  dxl_comm_result=packetHandler->write1ByteTxRx(portHandler,GRIPPER_ID,ADDR_TORQUE_ENABLE,TORQUE_ENABLE,&dxl_error);
+  if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
+  else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
+  else printf("Gripper#%d has been successfully connected \n",GRIPPER_ID);
+  
+  // Default goal current (close/hold)
+  {
+    uint8_t dxl_err_tmp = 0;
+    int dxl_ret_tmp = packetHandler->write2ByteTxRx(portHandler,GRIPPER_ID,ADDR_GOAL_CURRENT,GRIPPER_CURR_CLOSE,&dxl_err_tmp);
+    if(dxl_ret_tmp!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_ret_tmp));
+    else if(dxl_err_tmp!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_err_tmp));
+    else printf("Gripper goal current set to %d (CLOSE/HOLD).\n",GRIPPER_CURR_CLOSE);
+  }
+  // Calibrate gripper closed position from current present position; avoid forcing to 0
+  {
+    uint8_t dxl_err_read = 0; uint32_t present_pos = 0;
+    int r = packetHandler->read4ByteTxRx(portHandler, GRIPPER_ID, ADDR_PRESENT_POSITION, &present_pos, &dxl_err_read);
+    if(r!=COMM_SUCCESS) printf("%s\n", packetHandler->getTxRxResult(r));
+    else if(dxl_err_read!=0) printf("%s\n", packetHandler->getRxPacketError(dxl_err_read));
+    else {
+      gripper_closed_pos_ticks = (int32_t)present_pos;
+  // Compute open target relative to closed using configured direction
+  int64_t open_candidate = (int64_t)gripper_closed_pos_ticks + (int64_t)gripper_open_dir_state * (int64_t)GRIPPER_OPEN_TICKS;
+      if(open_candidate < 0) open_candidate = 0;
+      if(open_candidate > 4095) open_candidate = 4095;
+      gripper_open_pos_ticks = (int32_t)open_candidate;
+      gripper_calibrated = true;
+      printf("Gripper calibrated: closed=%d, open=%d (ticks)\n", gripper_closed_pos_ticks, gripper_open_pos_ticks);
+      // Set goal to current (no movement) to initialize
+      uint8_t dxl_err_init = 0;
+      int init_ret = packetHandler->write4ByteTxRx(portHandler, GRIPPER_ID, ADDR_GOAL_POSITION, (uint32_t)gripper_closed_pos_ticks, &dxl_err_init);
+      if(init_ret!=COMM_SUCCESS) printf("%s\n", packetHandler->getTxRxResult(init_ret));
+      else if(dxl_err_init!=0) printf("%s\n", packetHandler->getRxPacketError(dxl_err_init));
+      else printf("Gripper initialized to PRESENT (no move)\n");
+    }
+  }
 
   dxl_addparam_result=groupSFSyncRead_u_dq_q.addParam(DXL1_ID);
   if(dxl_addparam_result!=true){fprintf(stderr,"[ID:%03d] groupSFSyncRead_u_dq_q addparam failed",DXL1_ID);return 0;}
@@ -511,7 +619,10 @@ int main(int argc, char* argv[]){
     static bool home_captured = false;
     static Eigen::Vector4d h_base = Eigen::Vector4d::Zero();
     static Eigen::Vector4d yd_home = Eigen::Vector4d::Zero();
-    static int prev_buttons = 0;
+  static int prev_buttons = 0;
+  // Gripper control variables
+  static bool gripper_open = false;  // false = closed, true = open
+  static int prev_button2_state = 0; // for button 2 edge detection
     bool usedHaptics = false;
       if(g_hDevice==HD_INVALID_HANDLE){
         // try init once
@@ -554,11 +665,15 @@ int main(int argc, char* argv[]){
           ddh.setZero();
         }
 
-        // detect rising edge on button 1 (bit 0) to arm, any button press after arming to shutdown
-        const int BTN_MASK = 1;
+        // Button control logic:
+        // Button 1 (bit 0): Arm/Shutdown teleop
+        // Button 2 (bit 1): Toggle gripper open/close
+        const int BTN1_MASK = 1;  // Arm/shutdown button
+        const int BTN2_MASK = 2;  // Gripper toggle button
+        
         if(!teleop_active){
-          // Not armed yet: detect rising edge to arm
-          if((buttons & BTN_MASK) && !(prev_buttons & BTN_MASK)){
+          // Not armed yet: detect rising edge on button 1 to arm
+          if((buttons & BTN1_MASK) && !(prev_buttons & BTN1_MASK)){
             // Capture home at the EXACT moment of arming (zero error guaranteed)
             yd_home = y; // use current robot position as home
             home_captured = true;
@@ -577,7 +692,7 @@ int main(int argc, char* argv[]){
             
             // reset derivative history
             dh.setZero(); ddh.setZero(); h_prev = h_cur; h_prev_time = now;
-            std::cout << "Teleop armed via haptic button. Press any button again to stop safely.\n";
+            std::cout << "Teleop armed via haptic button 1. Press button 1 again to stop safely.\n";
             std::cout << "Haptic base captured: [" 
                       << h_base(0) << ", " << h_base(1) << ", " << h_base(2) << ", " << h_base(3) << "]\n";
             std::cout << "[ARMING] Initial error should be zero: err=[" 
@@ -585,12 +700,69 @@ int main(int argc, char* argv[]){
                       << (y(2)-yd_home(2)) << ", " << (y(3)-yd_home(3)) << "]\n";
           }
         } else {
-          // Already armed: any button press triggers safe shutdown
-          if(buttons != 0 && buttons != prev_buttons){
-            std::cout << "Button pressed - initiating safe shutdown...\n";
+          // Already armed: button 1 triggers safe shutdown
+          if((buttons & BTN1_MASK) && !(prev_buttons & BTN1_MASK)){
+            std::cout << "Button 1 pressed - initiating safe shutdown...\n";
             shutdown_requested = 1;
           }
         }
+        
+        // Button 2 controls gripper: toggle on rising edge (works anytime after init)
+        int button2_current = (buttons & BTN2_MASK) ? 1 : 0;
+        static double button2_press_time = 0.0;
+        static bool button2_lp_handled = false;
+        // Long-press to flip open direction and recompute open target
+        if(button2_current && !prev_button2_state){
+          button2_press_time = now;
+          button2_lp_handled = false;
+        }
+        if(button2_current && prev_button2_state && !button2_lp_handled){
+          if(now - button2_press_time > 0.8){
+            gripper_open_dir_state *= -1; // flip
+            int64_t open_candidate = (int64_t)gripper_closed_pos_ticks + (int64_t)gripper_open_dir_state * (int64_t)GRIPPER_OPEN_TICKS;
+            if(open_candidate < 0) open_candidate = 0;
+            if(open_candidate > 4095) open_candidate = 4095;
+            gripper_open_pos_ticks = (int32_t)open_candidate;
+            std::cout << "[Gripper] Long-press: flipped direction. New open target: " << gripper_open_pos_ticks << " ticks\n";
+            button2_lp_handled = true;
+          }
+        }
+        if(button2_current && !prev_button2_state){
+          // Rising edge detected on button 2
+          gripper_open = !gripper_open;  // Toggle state
+          
+          // Choose target from calibrated positions
+          int32_t gripper_position = gripper_open ? gripper_open_pos_ticks : gripper_closed_pos_ticks;
+          
+          // Set allowed current per action (gentle open/close)
+          uint8_t dxl_error_gripper = 0;
+          uint16_t gripper_goal_current = gripper_open ? GRIPPER_CURR_OPEN : GRIPPER_CURR_CLOSE;
+          int dxl_comm_result_gripper = packetHandler->write2ByteTxRx(
+            portHandler, GRIPPER_ID, ADDR_GOAL_CURRENT, gripper_goal_current, &dxl_error_gripper);
+          if(dxl_comm_result_gripper != COMM_SUCCESS || dxl_error_gripper != 0){
+            std::cout << "Gripper: failed to set goal current!\n";
+          }
+
+          // Send position command to gripper
+          dxl_error_gripper = 0;
+          dxl_comm_result_gripper = packetHandler->write4ByteTxRx(
+            portHandler, GRIPPER_ID, ADDR_GOAL_POSITION, gripper_position, &dxl_error_gripper);
+          
+          if(dxl_comm_result_gripper == COMM_SUCCESS && dxl_error_gripper == 0){
+            // Read back present position for diagnostics
+            uint8_t dxl_err_read = 0; uint32_t present_pos = 0;
+            int r = packetHandler->read4ByteTxRx(portHandler, GRIPPER_ID, ADDR_PRESENT_POSITION, &present_pos, &dxl_err_read);
+            if(r!=COMM_SUCCESS || dxl_err_read!=0){
+              std::cout << "Gripper command ok; readback failed.\n";
+            }
+            std::cout << "Gripper " << (gripper_open ? "OPENED" : "CLOSED") 
+                      << " (goal_pos: " << gripper_position << ", present_pos: " << (int)present_pos
+                      << ", goal_current: " << (int)gripper_goal_current << ")\n";
+          } else {
+            std::cout << "Gripper command failed!\n";
+          }
+        }
+        prev_button2_state = button2_current;
 
         prev_buttons = buttons;
 
@@ -868,6 +1040,10 @@ int main(int argc, char* argv[]){
   if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
   else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
   dxl_comm_result=packetHandler->write1ByteTxRx(portHandler,DXL4_ID,ADDR_TORQUE_ENABLE,TORQUE_DISABLE,&dxl_error);
+  if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
+  else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
+  // Disable gripper torque as well
+  dxl_comm_result=packetHandler->write1ByteTxRx(portHandler,GRIPPER_ID,ADDR_TORQUE_ENABLE,TORQUE_DISABLE,&dxl_error);
   if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
   else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
   

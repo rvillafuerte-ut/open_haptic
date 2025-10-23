@@ -26,9 +26,19 @@ cd /home/utec/open_haptic/build
 - **EN ESE MOMENTO se captura `yd_home = y` (error = 0 garantizado)**
 - El programa imprime:
   - `"Home captured at arming: [x, y, z, theta]"`
-  - `"Teleop armed via haptic button. Press any button again to stop safely."`
+  - `"Teleop armed via haptic button 1. Press button 1 again to stop safely."`
   - `"Haptic base captured: [x, y, z, roll]"`
 - A partir de este momento, el brazo sigue **variaciones (deltas)** del haptics
+
+### 4. Control del Gripper (Botón 2)
+- Presiona **botón 2** del Phantom Omni para toggle abrir/cerrar
+- **Estado inicial**: Cerrado (0°)
+- **Al presionar**: Abierto (90°)
+- **Al presionar de nuevo**: Cerrado (0°)
+- El programa imprime:
+  - `"Gripper OPENED (position: 1024)"` o
+  - `"Gripper CLOSED (position: 0)"`
+- **Nota**: El gripper funciona en cualquier momento, no necesita que la teleoperación esté armada
 
 ### 4. Control Teleoperado Activo
 - Mueve el Phantom Omni
@@ -41,8 +51,8 @@ cd /home/utec/open_haptic/build
   - Rotación máxima: ±0.5 rad
 
 ### 5. Detención Segura
-- **Presiona cualquier botón del Phantom** (incluido el mismo botón 1)
-- El programa imprime: `"Button pressed - initiating safe shutdown..."`
+- **Presiona botón 1 del Phantom** de nuevo
+- El programa imprime: `"Button 1 pressed - initiating safe shutdown..."`
 - El loop termina, los servos se deshabilitan
 - **Sostén el brazo durante el shutdown**
 
