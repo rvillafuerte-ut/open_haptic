@@ -23,6 +23,10 @@ qd[3][0] = 3.141592653589793-atan((sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1
 #include <unistd.h>
 #include "dynamixel_sdk.h"                                  // Uses Dynamixel SDK library
 #include <Eigen/Dense>
+#include <atomic>
+#include <thread>
+#include <cmath>
+#include <HD/hd.h>
 
 #define ADDR_OPERATING_MODE         11
 #define ADDR_TORQUE_ENABLE          64
@@ -55,6 +59,32 @@ qd[3][0] = 3.141592653589793-atan((sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1
 
 void OMDyn(const double* q, const double* dq, double* M, double* phib);
 
+// --- Haptics bridge (minimal) ------------------------------------------------
+struct HapticSample {
+  double position[3];
+  double transform[16];
+  double timestamp;
+};
+
+static HHD g_hDevice = HD_INVALID_HANDLE;
+static std::atomic<bool> g_hSampleReady{false};
+static HapticSample g_hSample;
+static std::atomic<int> g_hButtons{0};
+
+static HDCallbackCode HDCALLBACK hapticsServoCallback(void* /*user*/){
+  hdBeginFrame(g_hDevice);
+  hdGetDoublev(HD_CURRENT_POSITION, g_hSample.position);
+  hdGetDoublev(HD_CURRENT_TRANSFORM, g_hSample.transform);
+  g_hSample.timestamp = hdGetSchedulerTimeStamp();
+  int buttons = 0;
+  hdGetIntegerv(HD_CURRENT_BUTTONS, &buttons);
+  g_hButtons.store(buttons, std::memory_order_release);
+  hdEndFrame(g_hDevice);
+  g_hSampleReady.store(true, std::memory_order_release);
+  return HD_CALLBACK_CONTINUE;
+}
+// -----------------------------------------------------------------------------
+
 int getch(){
   struct termios oldt,newt;
   int ch;
@@ -68,7 +98,7 @@ int getch(){
 }
 template<typename T>
 void dbg(T a){
-  std::cout<<a<<std::endl;
+  //std::cout<<a<<std::endl;
 }
 int kbhit(void){
   struct termios oldt,newt;
@@ -93,6 +123,10 @@ volatile sig_atomic_t shutdown_requested=0;
 void signalHandler(int signum){
   shutdown_requested=1;
 }
+
+// Global filter state variables for reset on arming
+Eigen::Vector4d yd_filtered_state = Eigen::Vector4d::Zero();
+Eigen::Vector4d yd_prev_state = Eigen::Vector4d::Zero();
 
 std::vector<Eigen::VectorXd> loadData4(const std::string& filename){
   std::vector<Eigen::VectorXd> data;
@@ -153,7 +187,7 @@ int main(int argc, char* argv[]){
   int bff=atoi(argv[3]);
   float vf=atof(argv[4]);
   float bf=(float)bff/10.f;
-  printf("lambda %d DZ %d\n",lambda,DZ);
+  printf("lambda %f DZ %f bf %f vf %f\n",lambda,DZ,bf,vf);
   if(lambda<0 || lambda>90 || DZ<0 || DZ>60|| bff>25){
     printf("Invalid lambda or DZ\n");
     return 0;
@@ -314,7 +348,6 @@ int main(int argc, char* argv[]){
   sleep(1);
   auto start=std::chrono::high_resolution_clock::now();
   Eigen::VectorXd xi(4);xi<<0,0,0,0;
-  double t_pre=0;
   double M_doub[16];
   double phib_doub[4];
   Eigen::VectorXd y(4);
@@ -324,15 +357,8 @@ int main(int argc, char* argv[]){
   Eigen::VectorXd ddyd(4);
   Eigen::VectorXd dxi,ddxi,dq_(4);
   Eigen::VectorXd s,ds;
-  double dt;
   double dJ[4][4];
-  double pi_p = 3.141592;  
-
-
-
-  // DEseado
-  Eigen::VectorXd yd_p=Eigen::VectorXd::Zero(4);
-  Eigen::VectorXd dyd_p=Eigen::VectorXd::Zero(4);
+  double pi_p = 3.141592;
   
   do{
     ifl++;
@@ -457,20 +483,208 @@ int main(int argc, char* argv[]){
     dq_p(3) = dq(3);
 
 
-    // Deseado
+    // Trayectoria deseada (analítica)
+      // Default analytic trajectory
+      double omega = 0.5;  // frecuencia angular
+      Eigen::Vector4d yd_analytic;
+      yd_analytic(0) = 0.1 + 0.04*std::cos(omega*t);
+      yd_analytic(1) = 0.05*std::sin(omega*t);
+      yd_analytic(2) = 0.1;
+      yd_analytic(3) = pi_p/2;
 
-    yd(0) = 0.1 + 0.04*cos(0.5*t);
-    yd(1) = 0.05*sin(0.5*t);
-    yd(2) = 0.1;
-    yd(3) = pi_p/2; 
+      Eigen::Vector4d dyd_analytic;
+      dyd_analytic(0) = -0.04*omega*std::sin(omega*t);
+      dyd_analytic(1) = 0.05*omega*std::cos(omega*t);
+      dyd_analytic(2) = 0.0;
+      dyd_analytic(3) = 0.0;
 
-    // DIferencias finitas
-    dt = t - t_pre;
-    dyd << (yd - yd_p)/dt;
-    ddyd << (dyd - dyd_p)/dt;
+      Eigen::Vector4d ddyd_analytic = Eigen::Vector4d::Zero();
+      ddyd_analytic(0) = -0.04*omega*omega*std::cos(omega*t);
+      ddyd_analytic(1) = -0.05*omega*omega*std::sin(omega*t);
 
-    dbg("dyd");
-    //dbg(dt);
+    // If haptics is available and a fresh sample exists, use it as yd (but only after arming)
+    static Eigen::Vector4d h_prev = Eigen::Vector4d::Zero();
+    static Eigen::Vector4d dh = Eigen::Vector4d::Zero();
+    static Eigen::Vector4d ddh = Eigen::Vector4d::Zero();
+    static double h_prev_time = 0.0;
+    static bool teleop_active = false; // becomes true when user presses haptic button
+    static bool home_captured = false;
+    static Eigen::Vector4d h_base = Eigen::Vector4d::Zero();
+    static Eigen::Vector4d yd_home = Eigen::Vector4d::Zero();
+    static int prev_buttons = 0;
+    bool usedHaptics = false;
+      if(g_hDevice==HD_INVALID_HANDLE){
+        // try init once
+        g_hDevice = hdInitDevice(HD_DEFAULT_DEVICE);
+        if(!HD_DEVICE_ERROR(hdGetError())){
+          hdMakeCurrentDevice(g_hDevice);
+          hdEnable(HD_FORCE_OUTPUT);
+          hdSetSchedulerRate(1000);
+          hdStartScheduler();
+          hdScheduleAsynchronous(hapticsServoCallback, nullptr, 0);
+        }else{
+          g_hDevice = HD_INVALID_HANDLE;
+        }
+      }
+
+      if(g_hDevice!=HD_INVALID_HANDLE && g_hSampleReady.exchange(false)){
+        // map haptic sample to h_cur: x,y,z and roll (from transform)
+        double* T = g_hSample.transform;
+        double roll  = std::atan2(T[6], T[10]);
+        Eigen::Vector4d h_cur;
+        h_cur(0) = g_hSample.position[0];
+        h_cur(1) = g_hSample.position[1];
+        h_cur(2) = g_hSample.position[2];
+        h_cur(3) = roll;
+
+        int buttons = g_hButtons.load(std::memory_order_acquire);
+
+        double now = g_hSample.timestamp;
+        double dt = (h_prev_time>0) ? std::max(1e-6, now - h_prev_time) : 0.001;
+
+        // finite-difference + simple low-pass for derivative
+        Eigen::Vector4d raw_dh = (h_cur - h_prev) / dt;
+        const double alpha = 0.2; // low-pass for derivative
+        dh = alpha * raw_dh + (1.0 - alpha) * dh;
+        // approximate second derivative (placeholder: set to zero or compute with history)
+        if(dt > 0.0) {
+          // no previous derivative history kept -> keep ddh small (0) for stability
+          ddh.setZero();
+        } else {
+          ddh.setZero();
+        }
+
+        // detect rising edge on button 1 (bit 0) to arm, any button press after arming to shutdown
+        const int BTN_MASK = 1;
+        if(!teleop_active){
+          // Not armed yet: detect rising edge to arm
+          if((buttons & BTN_MASK) && !(prev_buttons & BTN_MASK)){
+            // Capture home at the EXACT moment of arming (zero error guaranteed)
+            yd_home = y; // use current robot position as home
+            home_captured = true;
+            std::cout << "Home captured at arming: [" 
+                      << y(0) << ", " << y(1) << ", " << y(2) << ", " << y(3) << "]\n";
+            
+            // arm teleoperation: capture haptic baseline
+            teleop_active = true;
+            h_base = h_cur;
+            
+            // CRITICAL: Reset all filter states to current position (prevents initial jump)
+            extern Eigen::Vector4d yd_filtered_state;
+            extern Eigen::Vector4d yd_prev_state;
+            yd_filtered_state = yd_home;
+            yd_prev_state = yd_home;
+            
+            // reset derivative history
+            dh.setZero(); ddh.setZero(); h_prev = h_cur; h_prev_time = now;
+            std::cout << "Teleop armed via haptic button. Press any button again to stop safely.\n";
+            std::cout << "Haptic base captured: [" 
+                      << h_base(0) << ", " << h_base(1) << ", " << h_base(2) << ", " << h_base(3) << "]\n";
+            std::cout << "[ARMING] Initial error should be zero: err=[" 
+                      << (y(0)-yd_home(0)) << ", " << (y(1)-yd_home(1)) << ", " 
+                      << (y(2)-yd_home(2)) << ", " << (y(3)-yd_home(3)) << "]\n";
+          }
+        } else {
+          // Already armed: any button press triggers safe shutdown
+          if(buttons != 0 && buttons != prev_buttons){
+            std::cout << "Button pressed - initiating safe shutdown...\n";
+            shutdown_requested = 1;
+          }
+        }
+
+        prev_buttons = buttons;
+
+        if(teleop_active){
+          // Coordinate system mapping for intuitive control:
+          // Haptic X (left/right) → Arm Y (left/right) - CORRECTED
+          // Haptic Y (up/down) → Arm Z (up/down) - natural vertical control
+          // Haptic Z (forward/back) → Arm X (forward/back) - CORRECTED
+          // Haptic Roll → Arm Yaw (rotation)
+          
+          Eigen::Vector4d delta_haptic = h_cur - h_base;
+          
+          // Remap haptic coordinates to arm coordinates (CORRECTED X/Y swap)
+          Eigen::Vector4d delta;
+          delta(0) = delta_haptic(2);   // Haptic Z → Arm X (forward/back)
+          delta(1) = delta_haptic(0);   // Haptic X → Arm Y (left/right)
+          delta(2) = delta_haptic(1);   // Haptic Y → Arm Z (up/down)
+          delta(3) = delta_haptic(3);   // Haptic Roll → Arm Yaw (rotation)
+          
+          // Scaling: adjust sensitivity for each axis independently
+          const double x_scale = 0.0011;    // X axis (forward/back)
+          const double y_scale = 0.0011;    // Y axis (left/right) - NOW SEPARATE!
+          const double z_scale = 0.001;    // Z axis (up/down)
+          const double ang_scale = 1.20;   // Yaw rotation
+          Eigen::Vector4d scale;
+          scale << x_scale, y_scale, z_scale, ang_scale;
+
+          // Scale haptic delta to robot-space offset (sensitivity)
+          Eigen::Vector4d offset = scale.cwiseProduct(delta);
+
+          // Clamp in ROBOT space (so changing scale does NOT change the max allowed displacement)
+          Eigen::Vector4d max_offset; // robot-space limits [m, m, m, rad]
+          max_offset << 0.30, 0.30, 0.15, 0.5;
+          for(int i=0;i<4;i++){
+            if(offset(i) > max_offset(i)) offset(i) = max_offset(i);
+            if(offset(i) < -max_offset(i)) offset(i) = -max_offset(i);
+          }
+
+          Eigen::Vector4d yd_target = yd_home + offset;
+          
+          // Low-pass filter + rate limiter for smooth yd trajectory
+          static Eigen::Vector4d yd_filtered = yd_home;
+          static Eigen::Vector4d yd_prev = yd_home;
+          
+          // Expose filter states for reset on arming
+          extern Eigen::Vector4d yd_filtered_state;
+          extern Eigen::Vector4d yd_prev_state;
+          yd_filtered_state = yd_filtered;
+          yd_prev_state = yd_prev;
+          
+          // Filter tuning (adjust to reduce lag vs smoothness trade-off)
+          const double alpha = 0.15;  // INCREASED from 0.05: more responsive, less lag
+                                       // Higher = faster response but less smooth
+                                       // Lower = smoother but more lag
+          
+          // Exponential moving average filter: smooth out discrete jumps from haptic
+          yd_filtered = alpha * yd_target + (1.0 - alpha) * yd_filtered;
+          
+          // Rate limiter: prevent sudden changes even after filtering
+          const double max_rate_pos = 0.003;  // INCREASED from 0.001mm: 3mm per cycle
+          const double max_rate_ang = 0.02;   // INCREASED from 0.01: faster rotation response
+          Eigen::Vector4d max_rate; max_rate<<max_rate_pos,max_rate_pos,max_rate_pos,max_rate_ang;
+          
+          Eigen::Vector4d yd_change = yd_filtered - yd_prev;
+          for(int i=0;i<4;i++){
+            if(yd_change(i) > max_rate(i)) yd_change(i) = max_rate(i);
+            if(yd_change(i) < -max_rate(i)) yd_change(i) = -max_rate(i);
+          }
+          
+          yd = yd_prev + yd_change;
+          yd_prev = yd;
+          
+          // Set desired velocities and accelerations to ZERO for position-only control
+          // This prevents huge feedforward terms from noisy numerical derivatives
+          dyd.setZero();
+          ddyd.setZero();
+          usedHaptics = true;
+        }
+
+        // update previous haptic pose/time
+        h_prev = h_cur;
+        h_prev_time = now;
+      }
+
+      // If teleop not active, keep yd equal to current position (zero error, no movement)
+      if(!teleop_active){
+        if(!home_captured) { 
+          yd = y; // Before arming: always follow current position (zero error)
+        } else { 
+          yd = yd_home; // After capturing home but if teleop got disabled
+        }
+        dyd.setZero();
+        ddyd.setZero();
+      }
 
     // Control
     Eigen::VectorXd u(4);
@@ -479,20 +693,15 @@ int main(int argc, char* argv[]){
     Eigen::VectorXd lbd(4);
     Eigen::VectorXd v=Eigen::VectorXd::Zero(4);
 
-
-    //lbd << 2 , 5, 5 ,5 ;
-    lbd << 20 , 20, 20 ,20 ;
-    //lbd << 8 , 8, 8 ,8 ;
-    //lbd << 4 , 15, 15 ,15 ;
-
-    // bueno lbd << 8 , 20, 20 ,20 ;
-    
-    
+    // Control gains: lbd (lambda) affects position error weighting
+    // High values = aggressive tracking but can cause oscillations
+    // If you see oscillations, try reducing these values (e.g., lbd << 40, 20, 40, 12)
+    lbd << 55 , 20, 45 ,15 ;   
+    lbd << 25 , 10, 25 ,20 ;
     dbg("Actiidad_2");
 
-    //k << 9 , 9 , 9 , 10 ;
-    // bueno k << 5 , 5 , 5 , 5 ;
-    k << 5 , 5 , 5 , 5 ;
+
+    k << 3 , 5 , 5 , 5 ;
 
     Eigen::MatrixXd k3(4,4);
     k3 << 8,0,0,0,
@@ -502,7 +711,7 @@ int main(int argc, char* argv[]){
 
     double k2;
     // bueno k2=9;
-    k2=9;
+    k2=10.5;
     u << 0,0,0,0;
     S = lbd.cwiseProduct(y - yd)+(dy-dyd);
 
@@ -528,14 +737,6 @@ int main(int argc, char* argv[]){
 
     //u << 0,0,0,0;
     Eigen::VectorXd curr=u/(1.666*0.00269);
-
-    t_pre = t;
-
-    // PAsado
-
-    yd_p = yd;
-    dyd_p = dyd;
-
 
     //(----------------------------------)
 
@@ -580,13 +781,51 @@ int main(int argc, char* argv[]){
     
 
     groupSyncWriteCurr.clearParam();
+    
+    // Real-time display for calibration (updates every 10 cycles = ~100Hz)
+    static int display_counter = 0;
+    if(teleop_active && display_counter++ % 10 == 0){
+      // Clear line and show current vs desired with visual bars
+      printf("\r\033[K");  // Clear line
+      printf("X: %+.3f→%+.3f ", (float)y(0), (float)yd(0));
+      printf("Y: %+.3f→%+.3f ", (float)y(1), (float)yd(1));
+      printf("Z: %+.3f→%+.3f ", (float)y(2), (float)yd(2));
+      printf("θ: %+.2f→%+.2f ", (float)y(3), (float)yd(3));
+      printf("| Err: X=%+.1fmm Y=%+.1fmm Z=%+.1fmm θ=%+.1f° ", 
+             (float)(y(0)-yd(0))*1000, 
+             (float)(y(1)-yd(1))*1000, 
+             (float)(y(2)-yd(2))*1000, 
+             (float)(y(3)-yd(3))*57.3);
+      fflush(stdout);
+    }
+    
+    // Diagnostic print when teleop is active (print first 20 cycles after arming for debugging)
+    static int print_counter = 0;
+    if(teleop_active && print_counter < 20){
+      printf("\n[DEBUG] t=%.3f | y=[%.4f %.4f %.4f %.4f] | yd=[%.4f %.4f %.4f %.4f] | err=[%.4f %.4f %.4f %.4f] | cur=[%d %d %d %d]\n",
+             (float)t,
+             (float)y(0), (float)y(1), (float)y(2), (float)y(3),
+             (float)yd(0), (float)yd(1), (float)yd(2), (float)yd(3),
+             (float)(y(0)-yd(0)), (float)(y(1)-yd(1)), (float)(y(2)-yd(2)), (float)(y(3)-yd(3)),
+             dxl1_cur, dxl2_cur, dxl3_cur, dxl4_cur);
+      print_counter++;
+    }
+    
     if(abs(dxl1_cur)>curr_peak||abs(dxl2_cur)>curr_peak||abs(dxl3_cur)>curr_peak||abs(dxl4_cur)>curr_peak){
       printf("Unsafe %d %d %d %d\n",dxl1_cur,dxl2_cur,dxl3_cur,dxl4_cur);
+      printf("[UNSAFE] y=[%.4f %.4f %.4f %.4f] | yd=[%.4f %.4f %.4f %.4f] | err=[%.4f %.4f %.4f %.4f]\n",
+             (float)y(0), (float)y(1), (float)y(2), (float)y(3),
+             (float)yd(0), (float)yd(1), (float)yd(2), (float)yd(3),
+             (float)(y(0)-yd(0)), (float)(y(1)-yd(1)), (float)(y(2)-yd(2)), (float)(y(3)-yd(3)));
       shutdown_requested=1;
     }//else printf("%.3f %.2f %.2f %.2f %.2f %d %d %d %d\n",(float)t,(float)q(0),(float)q(1),(float)q(2),(float)q(3),dxl1_cur,dxl2_cur,dxl3_cur,dxl4_cur);
     else{
       //outfile<<t<<", "<<q(0)<<", "<<q(1)<<", "<<q(2)<<", "<<q(3)<<", "<<dq(0)<<", "<<dq(1)<<", "<<dq(2)<<", "<<dq(3)<<", "<<dxl1_cur<<", "<<dxl2_cur<<", "<<dxl3_cur<<", "<<dxl4_cur<<"\n";
-      outfile<<t<<", "<<y(0)<<", "<<y(1)<<", "<<y(2)<<", "<<y(3)<<", "<<dq(0)<<", "<<dq(1)<<", "<<dq(2)<<", "<<dq(3)<<", "<<dxl1_cur<<", "<<dxl2_cur<<", "<<dxl3_cur<<", "<<dxl4_cur<<"\n";
+      // Log format: t, y0-3(measured), yd0-3(desired), dq0-3, cur1-4
+      outfile<<t<<", "<<y(0)<<", "<<y(1)<<", "<<y(2)<<", "<<y(3)<<", "
+             <<yd(0)<<", "<<yd(1)<<", "<<yd(2)<<", "<<yd(3)<<", "
+             <<dq(0)<<", "<<dq(1)<<", "<<dq(2)<<", "<<dq(3)<<", "
+             <<dxl1_cur<<", "<<dxl2_cur<<", "<<dxl3_cur<<", "<<dxl4_cur<<"\n";
       //outfile<<t<<" Hola\n";
       if(ifl%ifl_int==0){
         outfile.flush();
@@ -609,6 +848,13 @@ int main(int argc, char* argv[]){
   dxl_comm_result=packetHandler->write1ByteTxRx(portHandler,DXL4_ID,ADDR_TORQUE_ENABLE,TORQUE_DISABLE,&dxl_error);
   if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
   else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
+  
+  // Clean up haptic device if initialized
+  if(g_hDevice != HD_INVALID_HANDLE){
+    hdStopScheduler();
+    hdDisableDevice(g_hDevice);
+    g_hDevice = HD_INVALID_HANDLE;
+  }
   
   portHandler->closePort();
   return 0;
