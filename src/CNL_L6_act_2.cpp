@@ -661,12 +661,34 @@ int main(int argc, char* argv[]){
           }
           
           yd = yd_prev + yd_change;
+          
+          // Compute desired velocity from filtered trajectory (smooth numerical derivative)
+          // This provides feedforward to improve tracking and reduce lag
+          static Eigen::Vector4d yd_prev_for_vel = yd_prev;
+          const double dt_control = 0.001; // 1kHz control loop
+          dyd = (yd - yd_prev_for_vel) / dt_control;
+          
+          // Simple velocity smoothing (optional - reduces noise in dyd)
+          static Eigen::Vector4d dyd_prev = Eigen::Vector4d::Zero();
+          const double vel_alpha = 0.3; // smoothing for velocity
+          dyd = vel_alpha * dyd + (1.0 - vel_alpha) * dyd_prev;
+          dyd_prev = dyd;
+          
+          // Compute desired acceleration (from smoothed velocity)
+          static Eigen::Vector4d dyd_for_accel = Eigen::Vector4d::Zero();
+          ddyd = (dyd - dyd_for_accel) / dt_control;
+          
+          // Acceleration smoothing (more aggressive since it's noisier)
+          static Eigen::Vector4d ddyd_prev = Eigen::Vector4d::Zero();
+          const double accel_alpha = 0.5; // higher smoothing for acceleration
+          ddyd = accel_alpha * ddyd + (1.0 - accel_alpha) * ddyd_prev;
+          ddyd_prev = ddyd;
+          
+          // Update states for next iteration
+          yd_prev_for_vel = yd;
+          dyd_for_accel = dyd;
           yd_prev = yd;
           
-          // Set desired velocities and accelerations to ZERO for position-only control
-          // This prevents huge feedforward terms from noisy numerical derivatives
-          dyd.setZero();
-          ddyd.setZero();
           usedHaptics = true;
         }
 
