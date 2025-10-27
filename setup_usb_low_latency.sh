@@ -1,12 +1,24 @@
 #!/bin/bash
-# Script para configurar latencia ultra-baja en puerto USB para Dynamixel
-# Uso: sudo ./setup_usb_low_latency.sh [puerto]
+# Script para configurar latencia ultra-baja en puerto USB para Dynamixel y Haptics
+# Uso: sudo ./setup_usb_low_latency.sh [puerto1] [puerto2] ...
+# Ejemplo: sudo ./setup_usb_low_latency.sh /dev/ttyUSB0 /dev/ttyACM0
 
-PORT=${1:-/dev/ttyUSB0}
+# Si no se pasan argumentos, usar puertos por defecto
+if [ $# -eq 0 ]; then
+    PORTS=("/dev/ttyUSB0" "/dev/ttyACM0")
+else
+    PORTS=("$@")
+fi
+
+for PORT in "${PORTS[@]}"; do
+    echo ""
+    echo "=========================================="
+    echo "Procesando puerto: $PORT"
+    echo "=========================================="
 
 if [ ! -e "$PORT" ]; then
-    echo "Error: Puerto $PORT no existe"
-    exit 1
+    echo "⚠ Puerto $PORT no existe, saltando..."
+    continue
 fi
 
 echo "Configurando $PORT para latencia ultra-baja..."
@@ -56,6 +68,13 @@ if [ -e "$LATENCY_PATH" ]; then
     echo "Latency timer: $(cat $LATENCY_PATH) ms"
 fi
 echo "Puerto: $PORT"
-echo "Baudrate configurado en código: 4500000"
+ls -la $PORT
 echo ""
-echo "✓ Configuración completada. El puerto está listo para control de alta frecuencia."
+
+done
+
+echo ""
+echo "=========================================="
+echo "✓ Configuración completada para todos los puertos"
+echo "Los puertos están listos para control de alta frecuencia."
+echo "=========================================="

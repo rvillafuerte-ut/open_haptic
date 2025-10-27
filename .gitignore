@@ -1,12 +1,164 @@
+# ============================================
+# Build artifacts y directorios de compilación
+# ============================================
 build/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 install_manifest.txt
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# ============================================
+# Archivos objeto y binarios
+# ============================================
 *.o
 *.so
+*.so.*
 *.a
 *.dylib
 *.dll
 *.exe
+*.out
+
+# ============================================
+# Archivos de datos y logs
+# ============================================
+# Logs de ejecución
+data_log.txt
+data_log_joint.txt
+*.log
+*.txt.bak
+
+# Gráficas generadas
+plots/*.png
+plots/*.pdf
+plots/*.jpg
+plots/*.svg
+!plots/.gitkeep
+
+# Archivos temporales de análisis
+analysis_summary.txt
+output.log
+
+# ============================================
+# Python
+# ============================================
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# ============================================
+# IDEs y Editores
+# ============================================
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains IDEs (CLion, PyCharm, etc)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim
+*.swp
+*.swo
+*~
+.*.sw?
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ============================================
+# Sistema Operativo
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ============================================
+# CMake específico
+# ============================================
 compile_commands.json
+CTestTestfile.cmake
+_deps/
+Testing/
+
+# ============================================
+# Dynamixel y Hardware
+# ============================================
+# Archivos de configuración temporal de dispositivos
+*.dxl
+*.device
+
+# ============================================
+# Respaldos y temporales
+# ============================================
+*.bak
+*.tmp
+*.temp
+*.old
+*.backup
+*~.nib
+
+# ============================================
+# Archivos grandes de datos (opcional)
+# ============================================
+# Descomentar si tienes datasets grandes que no quieres versionar
+# *.csv
+# *.dat
+# *.bin
+
+# ============================================
+# Archivos de usuario específicos
+# ============================================
+# Notas personales
+TODO.md
+NOTES.md
+scratch/
+test_data/
+experiments/
+
+# Configuraciones locales
+config.local.txt
+.env.local
+

@@ -1,0 +1,18 @@
+# udev rules for Dynamixel and Haptic devices
+# Automatically sets permissions and low latency
+
+# Dynamixel USB adapters (FTDI-based, typically ttyUSB*)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", MODE="0666", RUN+="/bin/sh -c 'echo 1 > /sys/bus/usb-serial/devices/%k/latency_timer'"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", MODE="0666", RUN+="/bin/sh -c 'echo 1 > /sys/bus/usb-serial/devices/%k/latency_timer'"
+
+# Haptic devices (3D Systems Phantom, typically ttyACM*)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="cb48", MODE="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="cb48", MODE="0666"
+
+# Generic catch-all for common haptic device patterns
+SUBSYSTEM=="tty", KERNEL=="ttyACM*", ATTRS{idVendor}=="0403", MODE="0666"
+
+# Alternative: if you know the exact vendor/product ID of your haptic device
+# Find it with: lsusb | grep -i phantom
+# Then uncomment and update:
+# SUBSYSTEM=="tty", ATTRS{idVendor}=="XXXX", ATTRS{idProduct}=="YYYY", MODE="0666"
