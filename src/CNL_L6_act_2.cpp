@@ -70,6 +70,9 @@ qd[3][0] = 3.141592653589793-atan((sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1
 #define GRIPPER_OPEN_DIR                (-1)
 
 void OMDyn(const double* q, const double* dq, double* M, double* phib);
+Eigen::Matrix4d Modom(const double* q, const double* dq);
+Eigen::Matrix4d Codom(const double* q, const double* dq);
+Eigen::Vector4d godom(const double* q, const double* dq);
 
 // --- Haptics bridge (minimal) ------------------------------------------------
 struct HapticSample {
@@ -312,6 +315,7 @@ int main(int argc, char* argv[]){
   else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
   else printf("Succeeded%d limiting Current Max.\n",DXL4_ID);
 
+  /*
   // Configure Gripper (ID 15) in Current-based Position Control Mode (mode 5)
   // This lets us set a goal position with a current limit for gentle grasping
   uint8_t gripper_mode = 5;  // Current-based Position mode
@@ -363,6 +367,7 @@ int main(int argc, char* argv[]){
     else if(dxl_err_prof!=0) printf("%s\n", packetHandler->getRxPacketError(dxl_err_prof));
     else printf("Gripper profile set: acc=%u, vel=%u\n", (unsigned)prof_acc, (unsigned)prof_vel);
   }
+  */
 
   dxl_comm_result=packetHandler->write1ByteTxRx(portHandler,DXL1_ID,ADDR_TORQUE_ENABLE,TORQUE_ENABLE,&dxl_error);
   if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
@@ -381,6 +386,7 @@ int main(int argc, char* argv[]){
   else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
   else printf("Dynamixel#%d has been successfully connected \n",DXL4_ID);
   
+  /*
   // Enable torque for gripper
   dxl_comm_result=packetHandler->write1ByteTxRx(portHandler,GRIPPER_ID,ADDR_TORQUE_ENABLE,TORQUE_ENABLE,&dxl_error);
   if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
@@ -418,6 +424,7 @@ int main(int argc, char* argv[]){
       else printf("Gripper initialized to PRESENT (no move)\n");
     }
   }
+  */
 
   dxl_addparam_result=groupSFSyncRead_u_dq_q.addParam(DXL1_ID);
   if(dxl_addparam_result!=true){fprintf(stderr,"[ID:%03d] groupSFSyncRead_u_dq_q addparam failed",DXL1_ID);return 0;}
@@ -707,6 +714,7 @@ int main(int argc, char* argv[]){
           }
         }
         
+        /*
         // Button 2 controls gripper: toggle on rising edge (works anytime after init)
         int button2_current = (buttons & BTN2_MASK) ? 1 : 0;
         static double button2_press_time = 0.0;
@@ -763,6 +771,7 @@ int main(int argc, char* argv[]){
           }
         }
         prev_button2_state = button2_current;
+        */
 
         prev_buttons = buttons;
 
@@ -786,7 +795,7 @@ int main(int argc, char* argv[]){
           const double x_scale = 0.0011;    // X axis (forward/back)
           const double y_scale = 0.0011;    // Y axis (left/right) - NOW SEPARATE!
           const double z_scale = 0.001;    // Z axis (up/down)
-          const double ang_scale = 1.20;   // Yaw rotation
+          const double ang_scale = 0.9;   // Yaw rotation
           Eigen::Vector4d scale;
           scale << x_scale, y_scale, z_scale, ang_scale;
 
@@ -814,7 +823,7 @@ int main(int argc, char* argv[]){
           yd_prev_state = yd_prev;
           
           // Filter tuning (adjust to reduce lag vs smoothness trade-off)
-          const double alpha = 0.15;  // INCREASED from 0.05: more responsive, less lag
+          const double alpha = 0.05;  // INCREASED from 0.05: more responsive, less lag
                                        // Higher = faster response but less smooth
                                        // Lower = smoother but more lag
           
@@ -842,7 +851,7 @@ int main(int argc, char* argv[]){
           
           // Simple velocity smoothing (optional - reduces noise in dyd)
           static Eigen::Vector4d dyd_prev = Eigen::Vector4d::Zero();
-          const double vel_alpha = 0.3; // smoothing for velocity
+          const double vel_alpha = 0.8; // smoothing for velocity
           dyd = vel_alpha * dyd + (1.0 - vel_alpha) * dyd_prev;
           dyd_prev = dyd;
           
@@ -886,40 +895,104 @@ int main(int argc, char* argv[]){
     Eigen::VectorXd S(4);
     Eigen::VectorXd lbd(4);
     Eigen::VectorXd v=Eigen::VectorXd::Zero(4);
+    
+    // lbd << 25 , 10, 25 ,20 ;
+    // dbg("Actiidad_2");
 
-    // Control gains: lbd (lambda) affects position error weighting
-    // High values = aggressive tracking but can cause oscillations
-    // If you see oscillations, try reducing these values (e.g., lbd << 40, 20, 40, 12)
-    lbd << 55 , 20, 45 ,15 ;   
-    lbd << 25 , 10, 25 ,20 ;
-    dbg("Actiidad_2");
+    // double k2;
+    // // bueno k2=9;
+    // k2=10.5;
+    // u << 0,0,0,0;
+    // S = lbd.cwiseProduct(y - yd)+(dy-dyd);
 
+    // dbg(S);
+    // dbg("S");
 
-    k << 3 , 5 , 5 , 5 ;
+    // //v = -k.cwiseProduct(S);
+    // v = -k2*S;
 
-    Eigen::MatrixXd k3(4,4);
-    k3 << 8,0,0,0,
-          0,8,0,0,
-          0,0,8,0,
-          0,0,0,8;
+    // dbg("v");
+    // dbg(v);
+    // // 5. Dinámica
+    // Eigen::Matrix4d M_mat = Modom(q.data(), dq_p.data());     
+    // Eigen::Matrix4d C_mat = Codom(q.data(), dq_p.data()); 
+    // Eigen::Vector4d G_vec = godom(q.data(), dq_p.data());
+    // u = M_mat * Jinv_*(v - lbd.cwiseProduct(dy-dyd) + ddyd - dJ_ * dq_p) + C_mat*dq_p + G_vec;
+    //u = G_vec;
+    
+    // -----------------------------------------------------------------------
+    // 1. CONFIGURACIÓN DE GANANCIAS
+    // -----------------------------------------------------------------------
+    // Ahora que activaremos el Feedforward de inercia (M*ddq_r), 
+    // podemos permitirnos subir un poco más las ganancias KD para mejor tracking.
+    Eigen::VectorXd KD_diag(4); 
+    KD_diag << 0.2, 0.2, 0.2, 0.2; // Un poco más agresivas que antes
+    Eigen::MatrixXd KD = KD_diag.asDiagonal();
+    
+    lbd << 0.7, 0.4, 1.9, 0.2;
 
-    double k2;
-    // bueno k2=9;
-    k2=10.5;
-    u << 0,0,0,0;
-    S = lbd.cwiseProduct(y - yd)+(dy-dyd);
+    // -----------------------------------------------------------------------
+    // 2. REFERENCIAS CARTESIANAS
+    // -----------------------------------------------------------------------
+    // dy_r = v_deseada + lambda * error
+    Eigen::VectorXd dy_r = dyd - lbd.cwiseProduct(y - yd);
+    
+    // ddy_r: Mantenemos ddyd en 0 por estabilidad en teleoperación,
+    // pero conservamos el término de corrección de derivada del error (-lambda * de).
+    // Esto es vital para la amortiguación.
+    // de = dy - dyd.
+    Eigen::VectorXd ddy_r = -lbd.cwiseProduct(dy - dyd); 
 
-    dbg(S);
-    dbg("S");
+    // -----------------------------------------------------------------------
+    // 3. REFERENCIAS ARTICULARES (CINEMÁTICA INVERSA DIFERENCIAL)
+    // -----------------------------------------------------------------------
+    
+    // A. Velocidad de Referencia Articular
+    Eigen::VectorXd dq_r = Jinv_ * dy_r;
 
-    //v = -k.cwiseProduct(S);
-    v = -k2*S;
+    // B. Aceleración de Referencia Articular (EL PASO CRÍTICO)
+    // Fórmula: ddq_r = Jinv * (ddy_r - dJ * dq)
+    
+    // Cálculo robusto de dJ*dq (Aceleración cartesiana debida al movimiento actual):
+    // dJ*dq es exactamente la aceleración cartesiana si ddq fuera 0.
+    // Podemos aproximarlo o calcularlo si tienes la función. 
+    // Si no tienes dJ explícita, una aproximación numérica robusta es:
+    // (J_actual * dq - J_anterior * dq) / dt ... pero es ruidoso.
+    
+    // OPCIÓN ROBUSTA: Ignorar dJ*dq si la velocidad es baja, o usarlo si tienes la función.
+    // Si no tienes la matriz dJ, asumiremos que para movimientos lentos dJ*dq ≈ 0
+    // y solo mapeamos la aceleración cartesiana de corrección.
+    
+    Eigen::VectorXd dJ_dq = Eigen::VectorXd::Zero(4);
+    // DESCOMENTAR SI TIENES dJ calculada:
+    dJ_dq = dJ_ * dq_p; 
 
-    dbg("v");
-    dbg(v);
+    Eigen::VectorXd ddq_r = Jinv_ * (ddy_r - dJ_dq);
 
-    u = M * Jinv_*(v - lbd.cwiseProduct(dy-dyd) + ddyd - dJ_ * dq_p) + b;
+    // -----------------------------------------------------------------------
+    // 4. SUPERFICIE DESLIZANTE
+    // -----------------------------------------------------------------------
+    Eigen::VectorXd s = dq_p - dq_r;
 
+    // -----------------------------------------------------------------------
+    // 5. DINÁMICA (MODELO)
+    // -----------------------------------------------------------------------
+    // Calculamos matrices con el estado actual q_p
+    Eigen::Matrix4d M_mat = Modom(q.data(), dq_p.data()); 
+    Eigen::Vector4d G_vec = godom(q.data(), dq_p.data());
+
+    // SLOTINE PURO:
+    // La matriz C debe calcularse usando la velocidad real dq_p en el primer slot (estado)
+    // pero multiplicarse por dq_r (referencia) en la ley de control.
+    // Tu función Codom(q, dq) devuelve la matriz C(q,dq). Eso está bien.
+    Eigen::Matrix4d C_mat = Codom(q.data(), dq_p.data()); 
+
+    // -----------------------------------------------------------------------
+    // 6. LEY DE CONTROL SLOTINE COMPLETA
+    // -----------------------------------------------------------------------
+    // u = M*ddq_r + C(q,dq)*dq_r + G - KD*s
+    
+    u = M_mat * ddq_r + C_mat * dq_r + G_vec - KD * s;
     dbg("u");
     dbg(u);
     dbg("multi");
@@ -1042,10 +1115,12 @@ int main(int argc, char* argv[]){
   dxl_comm_result=packetHandler->write1ByteTxRx(portHandler,DXL4_ID,ADDR_TORQUE_ENABLE,TORQUE_DISABLE,&dxl_error);
   if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
   else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
+  /*
   // Disable gripper torque as well
   dxl_comm_result=packetHandler->write1ByteTxRx(portHandler,GRIPPER_ID,ADDR_TORQUE_ENABLE,TORQUE_DISABLE,&dxl_error);
   if(dxl_comm_result!=COMM_SUCCESS)printf("%s\n",packetHandler->getTxRxResult(dxl_comm_result));
   else if(dxl_error!=0)printf("%s\n",packetHandler->getRxPacketError(dxl_error));
+  */
   
   // Clean up haptic device if initialized
   if(g_hDevice != HD_INVALID_HANDLE){
@@ -1373,3 +1448,203 @@ void OMDyn(const double* q, const double* dq, double* M, double* phib){
        (t76_tmp * -8.9468685933691362E-5 + t80_tmp * 0.00088300008014966186)) +
       (t68 * t3 * -0.0003578747437347655 + t68 * t5 * 0.0035320003205986479);
 };
+
+Eigen::Matrix4d Modom(const double* q, const double* dq){
+  double q1 = q[0];
+  double q2 = q[1];
+  double q3 = q[2];
+  double q4 = q[3];
+  double dq1 = dq[0];
+  double dq2 = dq[1];
+  double dq3 = dq[2];
+  double dq4 = dq[3];
+  double t2 = cos(q2);
+  double t3 = cos(q3);
+  double t4 = cos(q4);
+  double t5 = sin(q2);
+  double t6 = sin(q3);
+  double t7 = q2+q3;
+  double t8 = q3+q4;
+  double t9 = q2*2.0;
+  double t11 = cos(t7);
+  double t12 = cos(t8);
+  double t13 = sin(t7);
+  double t14 = sin(t8);
+  double t15 = q2+t7;
+  double t17 = t7*2.0;
+  double t19 = t4*6.8448E-4;
+  double t20 = t4*3.4224E-4;
+  double t25 = t3*5.672287360337718E-4;
+  double t26 = t6*3.004194722219361E-3;
+  double t28 = t2*1.193151358043172E-5;
+  double t31 = t5*1.779165378009676E-6;
+  double t16 = q4+t15;
+  double t18 = t14*3.5328E-4;
+  double t21 = t12*6.624E-5;
+  double t23 = t20+2.328E-4;
+  double t27 = -t26;
+  double t29 = t13*4.69799175674762E-6;
+  double t30 = -t28;
+  double t32 = t11*1.158265040945455E-8;
+  double t22 = -t18;
+  double t33 = -t32;
+  double t24 = t21+t22+t23;
+  double t34 = t29+t33;
+  double t35 = t19+t21+t22+t25+t27+2.986781954088295E-3;
+  double t36 = t30+t31+t34;
+  Eigen::Matrix4d M;
+  M.setZero();
+  M(0,0) = t20+t21+t22+t25+t27+cos(q4*2.0+t17)*4.14E-5+cos(q4+t17)*3.4224E-4-cos(t9)*2.485350487945131E-3+cos(t15)*5.596120586140266E-4+cos(t16)*6.624E-5+cos(t17)*1.255834308500551E-3+sin(t9)*8.356293250954777E-4+sin(t15)*3.005622849235564E-3+sin(t16)*3.5328E-4+sin(t17)*2.704800864809753E-6+4.694729894838256E-3;
+  M(0,1) = t36;
+  M(0,2) = t34;
+  M(1,0) = t36;
+  M(1,1) = t3*1.134457472067544E-3-t6*6.008389444438723E-3+t12*1.3248E-4-t14*7.0656E-4+t19+8.588726674730516E-3;
+  M(1,2) = t35;
+  M(1,3) = t24;
+  M(2,0) = t34;
+  M(2,1) = t35;
+  M(2,2) = t19+2.986781954088295E-3;
+  M(2,3) = t23;
+  M(3,1) = t24;
+  M(3,2) = t23;
+  M(3,3) = 2.328E-4;
+
+
+  return M;
+}
+
+Eigen::Matrix4d Codom(const double* q, const double* dq){
+  double q1 = q[0];
+  double q2 = q[1];
+  double q3 = q[2];
+  double q4 = q[3];
+  double dq1 = dq[0];
+  double dq2 = dq[1];
+  double dq3 = dq[2];
+  double dq4 = dq[3];
+  double t2 = cos(q3);
+  double t3 = sin(q3);
+  double t4 = sin(q4);
+  double t5 = q2+q3;
+  double t6 = q3+q4;
+  double t7 = q2*2.0;
+  double t9 = q4*2.0;
+  double t12 = dq2+dq3+dq4;
+  double t10 = cos(t7);
+  double t11 = sin(t7);
+  double t13 = cos(t5);
+  double t14 = cos(t6);
+  double t15 = sin(t5);
+  double t16 = sin(t6);
+  double t17 = q2+t5;
+  double t21 = t5*2.0;
+  double t32 = t4*3.4224E-4;
+  double t35 = t4*1.7112E-4;
+  double t37 = dq4*t4*(-3.4224E-4);
+  double t56 = t3*2.836143680168859E-4;
+  double t57 = t3*5.672287360337718E-4;
+  double t58 = t2*3.004194722219361E-3;
+  double t59 = t2*1.502097361109681E-3;
+  double t18 = cos(t17);
+  double t19 = q4+t17;
+  double t20 = sin(t17);
+  double t24 = cos(t21);
+  double t25 = q4+t21;
+  double t26 = sin(t21);
+  double t28 = t9+t21;
+  double t30 = t14*1.7664E-4;
+  double t31 = t14*3.5328E-4;
+  double t33 = t16*6.624E-5;
+  double t34 = t16*3.312E-5;
+  double t66 = dq2*t13*4.69799175674762E-6;
+  double t67 = dq3*t13*4.69799175674762E-6;
+  double t69 = dq2*t15*1.158265040945455E-8;
+  double t70 = dq3*t15*1.158265040945455E-8;
+  double t73 = t10*8.356293250954777E-4;
+  double t74 = t11*2.485350487945131E-3;
+  double t22 = cos(t19);
+  double t23 = sin(t19);
+  double t27 = sin(t25);
+  double t29 = sin(t28);
+  double t53 = t31+t32+t33;
+  double t60 = t20*2.798060293070133E-4;
+  double t61 = t20*5.596120586140266E-4;
+  double t63 = t18*3.005622849235564E-3;
+  double t64 = t18*1.502811424617782E-3;
+  double t68 = t24*2.704800864809753E-6;
+  double t75 = t26*1.255834308500551E-3;
+  double t80 = dq1*t26*(-1.255834308500551E-3);
+  double t81 = t31+t33+t57+t58;
+  double t38 = t22*1.7664E-4;
+  double t39 = t22*3.5328E-4;
+  double t41 = t23*6.624E-5;
+  double t42 = t23*3.312E-5;
+  double t44 = t27*3.4224E-4;
+  double t46 = t27*1.7112E-4;
+  double t47 = t29*4.14E-5;
+  double t51 = dq1*t27*(-3.4224E-4);
+  double t52 = dq1*t29*(-4.14E-5);
+  double t54 = dq4*t53;
+  double t62 = -t61;
+  double t65 = -t64;
+  double t71 = -t68;
+  double t72 = dq1*t68;
+  double t77 = -t75;
+  double t82 = dq2*t81;
+  double t83 = dq3*t81;
+  double t40 = -t38;
+  double t43 = -t41;
+  double t45 = -t44;
+  double t50 = -t47;
+  double t55 = -t54;
+  double t84 = -t83;
+  double t76 = t30+t34+t35+t40+t42+t46+t47;
+  double t85 = t30+t34+t40+t42+t44+t47+t56+t59+t60+t65+t71+t75;
+  double t86 = t39+t43+t45+t50+t62+t63+t68+t73+t74+t77;
+  double t79 = dq1*t76;
+  Eigen::Matrix4d C;
+  C.setZero();
+  C(0,0) = -dq4*t76+dq2*t86-dq3*t85;
+  C(0,1) = t51+t52+t66+t67+t69+t70+t72+t80-dq1*t20*5.596120586140266E-4-dq1*t23*6.624E-5+dq1*t39+dq1*t63+dq1*t73+dq1*t74+dq2*cos(q2)*1.779165378009676E-6+dq2*sin(q2)*1.193151358043172E-5;
+  C(0,2) = t51+t52+t66+t67+t69+t70+t72+t80-dq1*t2*1.502097361109681E-3-dq1*t3*2.836143680168859E-4-dq1*t14*1.7664E-4-dq1*t16*3.312E-5-dq1*t20*2.798060293070133E-4-dq1*t23*3.312E-5+dq1*t38+dq1*t64;
+  C(0,3) = -t79;
+  C(1,0) = -dq1*t86;
+  C(1,1) = t55+t84;
+  C(1,2) = t55-t82+t84;
+  C(1,3) = t12*(t4*3.1E+1+t14*3.2E+1+t16*6.0)*(-1.104E-5);
+  C(2,0) = dq1*t85;
+  C(2,1) = t37+t82;
+  C(2,2) = t37;
+  C(2,3) = t4*t12*(-3.4224E-4);
+  C(3,0) = t79;
+  C(3,1) = dq3*t32+dq2*t53;
+  C(3,2) = t32*(dq2+dq3);
+
+  return C;
+}
+
+Eigen::Vector4d godom(const double* q, const double* dq){
+  double q1 = q[0];
+  double q2 = q[1];
+  double q3 = q[2];
+  double q4 = q[3];
+  double t2 = cos(q4);
+  double t3 = sin(q4);
+  double t4 = q2+q3;
+  double t5 = cos(t4);
+  double t6 = sin(t4);
+  double t7 = t2*t5*2.70756E-2;
+  double t8 = t3*t6*2.70756E-2;
+  double t10 = t6*2.918734589363309E-4;
+  double t12 = t5*2.302980874061438E-1;
+  double t9 = -t7;
+  double t11 = -t10;
+  double t13 = -t12;
+  Eigen::Vector4d G;
+  G.setZero();
+  G(1) = t8+t9+t11+t13-1.408204527562597E+37*sin(q2+atan(1.59184364256908E-1))*3.022939640710205E-38;
+  G(2) = t8+t9+t11+t13;
+  G(3) = cos(q4+t4)*(-2.70756E-2);
+
+  return G;
+}

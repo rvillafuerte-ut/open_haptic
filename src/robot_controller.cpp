@@ -83,7 +83,51 @@ void computeControl(const Eigen::Vector4d& q,
     k << 3, 5, 5, 5;
     
     double k2 = 10.5;
-    
+    /* slindg basico
+    dado 
+    ddy = J*ddq + dJ*dq
+    y ddq = inv(M)*(u-b)
+    reemplazando
+    ddy = J*inv(M)*(u-b) + dJ*dq
+
+    y en lyapunov 
+    S_dot = lbd*(dy- dyd) + ddy - ddyd = v 
+    , donde v = funcióncon signo contrario a S ejem v = -k2*S
+    reemplazando ddy en S_dot
+    S_dot = lbd*(dy- dyd) + J*inv(M)*(u-b) + dJ*dq - ddyd = v
+    despejando u
+    u = M*Jinv*(v - lbd*(dy - dyd) + ddyd - dJ*dq) + b y ello cumple lyapunov
+    */ 
+
+    /*sliding de bruto con M
+    V = 0.5*S^T*M*S
+    S = lbd*(y - yd) + (dy - dyd)
+    V_dot = S^T*M*S_dot + 0.5*S^T*dot(M)*S
+    V_dot = S^T*[M*S_dot + 0.5*dot(M)*S]
+    V_dot = S^T*[M*(lbd*(dy - dyd) + ddy - ddyd) + 0.5*dot(M)*S]
+    reemplazando ddy
+    V_dot = S^T*[M*(lbd*(dy - dyd) + J*inv(M)*(u-b) + dJ*dq - ddyd) + 0.5*dot(M)*S]
+    despejando u
+    v = [M*(lbd*(dy - dyd) + J*inv(M)*(u-b) + dJ*dq - ddyd) + 0.5*dot(M)*S]
+    con v con signo contrario a S
+    u = M*Jinv*(v - lbd*(dy - dyd) + ddyd - dJ*dq) + b - Jinv*0.5*dot(M)*S  
+    */
+
+    /* sliding stoline
+    V = 0.5*S^T*M*S
+    dyr = dyd - lbd*(y - yd)
+    S =  dy - dyr
+    V_dot = S^T*M*S_dot + 0.5*S^T*dot(M)*S
+    M*S_dot = M*ddy - M*ddyr 
+    reemplazando ddy
+    M*S_dot = M*(J*inv(M)*(u-b) + dJ*dq) - M*ddyr = -K2*S - C*S
+    V_dot = S^T*[-K2*S - C*S] + 0.5*S^T*dot(M)*S
+    V_dot = -S^T*K2*S - S^T*C*S + 0.5*S^T*dot(M)*S
+    V_dot = -S^T*K2*S
+    M*(J*inv(M)*(u-b) + dJ*dq) - M*ddyr = -K2*S - C*S
+    u = M*Jinv*inv(M)*(-K2*S - C*S + M*ddyr) + M*Jinv*dJ*dq + b
+    u = Jinv*(-K2*S - C*S + M*ddyr) + M*Jinv*dJ*dq + b
+    */
     // Sliding surface
     Eigen::Vector4d S = lbd.cwiseProduct(y - yd) + (dy - dyd);
     
