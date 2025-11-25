@@ -649,6 +649,14 @@ int main(int argc, char* argv[]){
         // map haptic sample to h_cur: x,y,z and roll (from transform)
         double* T = g_hSample.transform;
         double roll  = std::atan2(T[6], T[10]);
+        double pitch = std::atan2(-T[2], std::sqrt(T[6]*T[6] + T[10]*T[10]));
+        double yaw   = std::atan2(T[1], T[0]);
+
+        static int rpy_cnt = 0;
+        if(rpy_cnt++ % 50 == 0){
+          printf("RPY DEBUG: Roll=%.3f Pitch=%.3f Yaw=%.3f\n", roll, pitch, yaw);
+        }
+
         Eigen::Vector4d h_cur;
         h_cur(0) = g_hSample.position[0];
         h_cur(1) = g_hSample.position[1];
@@ -804,7 +812,7 @@ int main(int argc, char* argv[]){
 
           // Clamp in ROBOT space (so changing scale does NOT change the max allowed displacement)
           Eigen::Vector4d max_offset; // robot-space limits [m, m, m, rad]
-          max_offset << 0.30, 0.30, 0.15, 0.5;
+          max_offset << 0.30, 0.30, 0.15, 0.7;
           for(int i=0;i<4;i++){
             if(offset(i) > max_offset(i)) offset(i) = max_offset(i);
             if(offset(i) < -max_offset(i)) offset(i) = -max_offset(i);
@@ -929,7 +937,7 @@ int main(int argc, char* argv[]){
     KD_diag << 0.2, 0.2, 0.2, 0.2; // Un poco más agresivas que antes
     Eigen::MatrixXd KD = KD_diag.asDiagonal();
     
-    lbd << 0.7, 0.4, 1.9, 0.2;
+    lbd << 1.9, 1.5, 3.1, 2.9;
 
     // -----------------------------------------------------------------------
     // 2. REFERENCIAS CARTESIANAS
@@ -993,6 +1001,7 @@ int main(int argc, char* argv[]){
     // u = M*ddq_r + C(q,dq)*dq_r + G - KD*s
     
     u = M_mat * ddq_r + C_mat * dq_r + G_vec - KD * s;
+    //u = G_vec;
     dbg("u");
     dbg(u);
     dbg("multi");
@@ -1458,6 +1467,8 @@ Eigen::Matrix4d Modom(const double* q, const double* dq){
   double dq2 = dq[1];
   double dq3 = dq[2];
   double dq4 = dq[3];
+  Eigen::Matrix4d M;
+  M.setZero();
   double t2 = cos(q2);
   double t3 = cos(q3);
   double t4 = cos(q4);
@@ -1472,42 +1483,40 @@ Eigen::Matrix4d Modom(const double* q, const double* dq){
   double t14 = sin(t8);
   double t15 = q2+t7;
   double t17 = t7*2.0;
-  double t19 = t4*6.8448E-4;
-  double t20 = t4*3.4224E-4;
-  double t25 = t3*5.672287360337718E-4;
-  double t26 = t6*3.004194722219361E-3;
+  double t19 = t4*6.3984E-4;
+  double t22 = t4*3.1992E-4;
+  double t25 = t3*5.493727360337718E-4;
+  double t26 = t6*2.908962722219361E-3;
   double t28 = t2*1.193151358043172E-5;
   double t31 = t5*1.779165378009676E-6;
   double t16 = q4+t15;
-  double t18 = t14*3.5328E-4;
-  double t21 = t12*6.624E-5;
-  double t23 = t20+2.328E-4;
+  double t18 = t14*3.3024E-4;
+  double t20 = t12*6.192E-5;
+  double t23 = t22+2.274E-4;
   double t27 = -t26;
   double t29 = t13*4.69799175674762E-6;
   double t30 = -t28;
   double t32 = t11*1.158265040945455E-8;
-  double t22 = -t18;
+  double t21 = -t18;
   double t33 = -t32;
-  double t24 = t21+t22+t23;
+  double t24 = t20+t21+t23;
   double t34 = t29+t33;
-  double t35 = t19+t21+t22+t25+t27+2.986781954088295E-3;
+  double t35 = t19+t20+t21+t25+t27+2.889125954088295E-3;
   double t36 = t30+t31+t34;
-  Eigen::Matrix4d M;
-  M.setZero();
-  M(0,0) = t20+t21+t22+t25+t27+cos(q4*2.0+t17)*4.14E-5+cos(q4+t17)*3.4224E-4-cos(t9)*2.485350487945131E-3+cos(t15)*5.596120586140266E-4+cos(t16)*6.624E-5+cos(t17)*1.255834308500551E-3+sin(t9)*8.356293250954777E-4+sin(t15)*3.005622849235564E-3+sin(t16)*3.5328E-4+sin(t17)*2.704800864809753E-6+4.694729894838256E-3;
+  M(0,0) = t20+t21+t22+t25+t27+cos(q4*2.0+t17)*3.87E-5+cos(q4+t17)*3.1992E-4-cos(t9)*2.437926487945131E-3+cos(t15)*5.417560586140266E-4+cos(t16)*6.192E-5+cos(t17)*1.209706308500551E-3+sin(t9)*8.171973250954777E-4+sin(t15)*2.910390849235564E-3+sin(t16)*3.3024E-4+sin(t17)*2.704800864809753E-6+4.595021894838256E-3;
   M(0,1) = t36;
   M(0,2) = t34;
   M(1,0) = t36;
-  M(1,1) = t3*1.134457472067544E-3-t6*6.008389444438723E-3+t12*1.3248E-4-t14*7.0656E-4+t19+8.588726674730516E-3;
+  M(1,1) = t3*1.098745472067544E-3-t6*5.817925444438723E-3+t12*1.2384E-4-t14*6.6048E-4+t19+8.389310674730516E-3;
   M(1,2) = t35;
   M(1,3) = t24;
   M(2,0) = t34;
   M(2,1) = t35;
-  M(2,2) = t19+2.986781954088295E-3;
+  M(2,2) = t19+2.889125954088295E-3;
   M(2,3) = t23;
   M(3,1) = t24;
   M(3,2) = t23;
-  M(3,3) = 2.328E-4;
+  M(3,3) = 2.274E-4;
 
 
   return M;
@@ -1522,6 +1531,8 @@ Eigen::Matrix4d Codom(const double* q, const double* dq){
   double dq2 = dq[1];
   double dq3 = dq[2];
   double dq4 = dq[3];
+  Eigen::Matrix4d C;
+  C.setZero();
   double t2 = cos(q3);
   double t3 = sin(q3);
   double t4 = sin(q4);
@@ -1538,13 +1549,13 @@ Eigen::Matrix4d Codom(const double* q, const double* dq){
   double t16 = sin(t6);
   double t17 = q2+t5;
   double t21 = t5*2.0;
-  double t32 = t4*3.4224E-4;
-  double t35 = t4*1.7112E-4;
-  double t37 = dq4*t4*(-3.4224E-4);
-  double t56 = t3*2.836143680168859E-4;
-  double t57 = t3*5.672287360337718E-4;
-  double t58 = t2*3.004194722219361E-3;
-  double t59 = t2*1.502097361109681E-3;
+  double t33 = t4*3.1992E-4;
+  double t34 = t4*1.5996E-4;
+  double t37 = dq4*t4*(-3.1992E-4);
+  double t56 = t3*2.746863680168859E-4;
+  double t57 = t3*5.493727360337718E-4;
+  double t58 = t2*2.908962722219361E-3;
+  double t59 = t2*1.454481361109681E-3;
   double t18 = cos(t17);
   double t19 = q4+t17;
   double t20 = sin(t17);
@@ -1552,73 +1563,71 @@ Eigen::Matrix4d Codom(const double* q, const double* dq){
   double t25 = q4+t21;
   double t26 = sin(t21);
   double t28 = t9+t21;
-  double t30 = t14*1.7664E-4;
-  double t31 = t14*3.5328E-4;
-  double t33 = t16*6.624E-5;
-  double t34 = t16*3.312E-5;
+  double t30 = t14*3.3024E-4;
+  double t31 = t14*1.6512E-4;
+  double t32 = t16*6.192E-5;
+  double t35 = t16*3.096E-5;
   double t66 = dq2*t13*4.69799175674762E-6;
   double t67 = dq3*t13*4.69799175674762E-6;
   double t69 = dq2*t15*1.158265040945455E-8;
   double t70 = dq3*t15*1.158265040945455E-8;
-  double t73 = t10*8.356293250954777E-4;
-  double t74 = t11*2.485350487945131E-3;
+  double t73 = t10*8.171973250954777E-4;
+  double t74 = t11*2.437926487945131E-3;
   double t22 = cos(t19);
   double t23 = sin(t19);
   double t27 = sin(t25);
   double t29 = sin(t28);
-  double t53 = t31+t32+t33;
-  double t60 = t20*2.798060293070133E-4;
-  double t61 = t20*5.596120586140266E-4;
-  double t63 = t18*3.005622849235564E-3;
-  double t64 = t18*1.502811424617782E-3;
+  double t53 = t30+t32+t33;
+  double t60 = t20*2.708780293070133E-4;
+  double t61 = t20*5.417560586140266E-4;
+  double t63 = t18*2.910390849235564E-3;
+  double t64 = t18*1.455195424617782E-3;
   double t68 = t24*2.704800864809753E-6;
-  double t75 = t26*1.255834308500551E-3;
-  double t80 = dq1*t26*(-1.255834308500551E-3);
-  double t81 = t31+t33+t57+t58;
-  double t38 = t22*1.7664E-4;
-  double t39 = t22*3.5328E-4;
-  double t41 = t23*6.624E-5;
-  double t42 = t23*3.312E-5;
-  double t44 = t27*3.4224E-4;
-  double t46 = t27*1.7112E-4;
-  double t47 = t29*4.14E-5;
-  double t51 = dq1*t27*(-3.4224E-4);
-  double t52 = dq1*t29*(-4.14E-5);
+  double t75 = t26*1.209706308500551E-3;
+  double t78 = dq1*t26*(-1.209706308500551E-3);
+  double t81 = t30+t32+t57+t58;
+  double t38 = t22*3.3024E-4;
+  double t39 = t22*1.6512E-4;
+  double t40 = t23*6.192E-5;
+  double t43 = t23*3.096E-5;
+  double t44 = t27*3.1992E-4;
+  double t45 = t27*1.5996E-4;
+  double t47 = t29*3.87E-5;
+  double t51 = dq1*t27*(-3.1992E-4);
+  double t52 = dq1*t29*(-3.87E-5);
   double t54 = dq4*t53;
   double t62 = -t61;
   double t65 = -t64;
   double t71 = -t68;
   double t72 = dq1*t68;
-  double t77 = -t75;
+  double t76 = -t75;
   double t82 = dq2*t81;
   double t83 = dq3*t81;
-  double t40 = -t38;
-  double t43 = -t41;
-  double t45 = -t44;
+  double t41 = -t39;
+  double t42 = -t40;
+  double t46 = -t44;
   double t50 = -t47;
   double t55 = -t54;
   double t84 = -t83;
-  double t76 = t30+t34+t35+t40+t42+t46+t47;
-  double t85 = t30+t34+t40+t42+t44+t47+t56+t59+t60+t65+t71+t75;
-  double t86 = t39+t43+t45+t50+t62+t63+t68+t73+t74+t77;
-  double t79 = dq1*t76;
-  Eigen::Matrix4d C;
-  C.setZero();
-  C(0,0) = -dq4*t76+dq2*t86-dq3*t85;
-  C(0,1) = t51+t52+t66+t67+t69+t70+t72+t80-dq1*t20*5.596120586140266E-4-dq1*t23*6.624E-5+dq1*t39+dq1*t63+dq1*t73+dq1*t74+dq2*cos(q2)*1.779165378009676E-6+dq2*sin(q2)*1.193151358043172E-5;
-  C(0,2) = t51+t52+t66+t67+t69+t70+t72+t80-dq1*t2*1.502097361109681E-3-dq1*t3*2.836143680168859E-4-dq1*t14*1.7664E-4-dq1*t16*3.312E-5-dq1*t20*2.798060293070133E-4-dq1*t23*3.312E-5+dq1*t38+dq1*t64;
-  C(0,3) = -t79;
+  double t79 = t31+t34+t35+t41+t43+t45+t47;
+  double t85 = t31+t35+t41+t43+t44+t47+t56+t59+t60+t65+t71+t75;
+  double t86 = t38+t42+t46+t50+t62+t63+t68+t73+t74+t76;
+  double t80 = dq1*t79;
+  C(0,0) = -dq4*t79+dq2*t86-dq3*t85;
+  C(0,1) = t51+t52+t66+t67+t69+t70+t72+t78-dq1*t20*5.417560586140266E-4-dq1*t23*6.192E-5+dq1*t38+dq1*t63+dq1*t73+dq1*t74+dq2*cos(q2)*1.779165378009676E-6+dq2*sin(q2)*1.193151358043172E-5;
+  C(0,2) = t51+t52+t66+t67+t69+t70+t72+t78-dq1*t2*1.454481361109681E-3-dq1*t3*2.746863680168859E-4-dq1*t14*1.6512E-4-dq1*t16*3.096E-5-dq1*t20*2.708780293070133E-4-dq1*t23*3.096E-5+dq1*t39+dq1*t64;
+  C(0,3) = -t80;
   C(1,0) = -dq1*t86;
   C(1,1) = t55+t84;
   C(1,2) = t55-t82+t84;
-  C(1,3) = t12*(t4*3.1E+1+t14*3.2E+1+t16*6.0)*(-1.104E-5);
+  C(1,3) = t12*(t4*3.1E+1+t14*3.2E+1+t16*6.0)*(-1.032E-5);
   C(2,0) = dq1*t85;
   C(2,1) = t37+t82;
   C(2,2) = t37;
-  C(2,3) = t4*t12*(-3.4224E-4);
-  C(3,0) = t79;
-  C(3,1) = dq3*t32+dq2*t53;
-  C(3,2) = t32*(dq2+dq3);
+  C(2,3) = t4*t12*(-3.1992E-4);
+  C(3,0) = t80;
+  C(3,1) = dq3*t33+dq2*t53;
+  C(3,2) = t33*(dq2+dq3);
 
   return C;
 }
@@ -1633,18 +1642,22 @@ Eigen::Vector4d godom(const double* q, const double* dq){
   double t4 = q2+q3;
   double t5 = cos(t4);
   double t6 = sin(t4);
-  double t7 = t2*t5*2.70756E-2;
-  double t8 = t3*t6*2.70756E-2;
+  double t7 = t2*t5*2.53098E-2;
+  double t8 = t3*t6*2.53098E-2;
   double t10 = t6*2.918734589363309E-4;
-  double t12 = t5*2.302980874061438E-1;
+  double t12 = t5*2.229994474061438E-1;
   double t9 = -t7;
   double t11 = -t10;
   double t13 = -t12;
   Eigen::Vector4d G;
   G.setZero();
-  G(1) = t8+t9+t11+t13-1.408204527562597E+37*sin(q2+atan(1.59184364256908E-1))*3.022939640710205E-38;
+  G(1) = t8+t9+t11+t13-1.382856941792986E+37*sin(q2+atan(1.586676518285441E-1))*3.022939640710205E-38;
   G(2) = t8+t9+t11+t13;
-  G(3) = cos(q4+t4)*(-2.70756E-2);
+  G(3) = cos(q4+t4)*(-2.53098E-2);
+
+
+
+
 
   return G;
 }
