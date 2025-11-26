@@ -1,11 +1,3 @@
-// ------
-//Act 1 ref
-/*
-qd[0][0] = atan(sin(t)/(cos(t)*(3.0/5.0)+2.0));
-qd[1][0] = atan((sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*-8.556623698070271E+67+sqrt(-(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68-1.732222647492033E+67)*(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+3.898200296293937E+66))+1.320334069742118E+51)/(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+1.373831754907475E+67))*-2.0-3.7E+1/2.0E+2;
-qd[2][0] = 3.141592653589793*(-1.0/2.0)+atan((sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*8.359163151191727E+68+((sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*-8.556623698070271E+67+sqrt(-(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68-1.732222647492033E+67)*(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+3.898200296293937E+66))+1.320334069742118E+51)*6.869158774537375E+67)/(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+1.373831754907475E+67)-(sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*(sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*-8.556623698070271E+67+sqrt(-(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68-1.732222647492033E+67)*(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+3.898200296293937E+66))+1.320334069742118E+51)*5.078207960546609E+52)/(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+1.373831754907475E+67)+((pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*(sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*-8.556623698070271E+67+sqrt(-(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68-1.732222647492033E+67)*(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+3.898200296293937E+66))+1.320334069742118E+51)*1.645504557321206E+69)/(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+1.373831754907475E+67)-1.289864821978839E+52)/(pow(sin(t),2.0)*4.113761393303015E+66-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*5.078207960546609E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*1.645504557321206E+69+6.152376989368257E+67))*2.0+atan((sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*-8.556623698070271E+67+sqrt(-(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68-1.732222647492033E+67)*(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+3.898200296293937E+66))+1.320334069742118E+51)/(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+1.373831754907475E+67))*2.0+3.7E+1/2.0E+2;
-qd[3][0] = 3.141592653589793-atan((sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*8.359163151191727E+68+((sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*-8.556623698070271E+67+sqrt(-(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68-1.732222647492033E+67)*(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+3.898200296293937E+66))+1.320334069742118E+51)*6.869158774537375E+67)/(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+1.373831754907475E+67)-(sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*(sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*-8.556623698070271E+67+sqrt(-(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68-1.732222647492033E+67)*(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+3.898200296293937E+66))+1.320334069742118E+51)*5.078207960546609E+52)/(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+1.373831754907475E+67)+((pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*(sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*-8.556623698070271E+67+sqrt(-(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68-1.732222647492033E+67)*(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+3.898200296293937E+66))+1.320334069742118E+51)*1.645504557321206E+69)/(pow(sin(t),2.0)*8.22752278660603E+65-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*1.015641592109322E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*3.291009114642412E+68+1.373831754907475E+67)-1.289864821978839E+52)/(pow(sin(t),2.0)*4.113761393303015E+66-sqrt(pow(sin(t),2.0)/4.0E+2+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0))*5.078207960546609E+52+pow(cos(t)*(3.0/1.0E+2)+1.0/1.0E+1,2.0)*1.645504557321206E+69+6.152376989368257E+67))*2.0;'
-*/
 
 
 // ----------------------
@@ -512,10 +504,26 @@ int main(int argc, char* argv[]){
     q(1)=(dxl2_pos-2048)*3.1416f/2048;
     q(2)=(dxl3_pos-2048)*3.1416f/2048;
     q(3)=(dxl4_pos-2048)*3.1416f/2048;
-    dq(0)=(dxl1_vel)*0.229f*3.1416f/30.f;
-    dq(1)=(dxl2_vel)*0.229f*3.1416f/30.f;
-    dq(2)=(dxl3_vel)*0.229f*3.1416f/30.f;
-    dq(3)=(dxl4_vel)*0.229f*3.1416f/30.f;
+    
+    // Leer velocidades crudas (sin filtrar)
+    Eigen::VectorXd dq_raw(4);
+    dq_raw(0)=(dxl1_vel)*0.229f*3.1416f/30.f;
+    dq_raw(1)=(dxl2_vel)*0.229f*3.1416f/30.f;
+    dq_raw(2)=(dxl3_vel)*0.229f*3.1416f/30.f;
+    dq_raw(3)=(dxl4_vel)*0.229f*3.1416f/30.f;
+    
+    // Filtro paso-bajo exponencial para dq (reduce ruido de velocidad)
+    static Eigen::VectorXd dq_filtered = Eigen::VectorXd::Zero(4);
+    static bool dq_filter_init = false;
+    if(!dq_filter_init){
+      dq_filtered = dq_raw; // Inicializar con primer valor
+      dq_filter_init = true;
+    }
+    const double alpha_dq = 0.2; // 0.1=muy suave, 0.2-0.3=óptimo anti-ruido, 0.5=balanceado, 0.9=casi sin filtro
+    dq_filtered = alpha_dq * dq_raw + (1.0 - alpha_dq) * dq_filtered;
+    
+    // Usar velocidades filtradas
+    dq = dq_filtered;
 
     double q_doub[4]={q(0),q(1),q(2),q(3)};
     double dq_doub[4]={dq(0),dq(1),dq(2),dq(3)};
@@ -670,7 +678,7 @@ int main(int argc, char* argv[]){
 
         // finite-difference + simple low-pass for derivative
         Eigen::Vector4d raw_dh = (h_cur - h_prev) / dt;
-        const double alpha = 0.2; // low-pass for derivative
+        const double alpha = 0.5; // low-pass for derivative
         dh = alpha * raw_dh + (1.0 - alpha) * dh;
         // approximate second derivative (placeholder: set to zero or compute with history)
         if(dt > 0.0) {
@@ -839,8 +847,8 @@ int main(int argc, char* argv[]){
           yd_filtered = alpha * yd_target + (1.0 - alpha) * yd_filtered;
           
           // Rate limiter: prevent sudden changes even after filtering
-          const double max_rate_pos = 0.003;  // INCREASED from 0.001mm: 3mm per cycle
-          const double max_rate_ang = 0.02;   // INCREASED from 0.01: faster rotation response
+          const double max_rate_pos = 0.005;  // INCREASED from 0.001mm: 3mm per cycle
+          const double max_rate_ang = 0.05;   // INCREASED from 0.01: faster rotation response
           Eigen::Vector4d max_rate; max_rate<<max_rate_pos,max_rate_pos,max_rate_pos,max_rate_ang;
           
           Eigen::Vector4d yd_change = yd_filtered - yd_prev;
@@ -859,7 +867,7 @@ int main(int argc, char* argv[]){
           
           // Simple velocity smoothing (optional - reduces noise in dyd)
           static Eigen::Vector4d dyd_prev = Eigen::Vector4d::Zero();
-          const double vel_alpha = 0.8; // smoothing for velocity
+          const double vel_alpha = 0.98; // smoothing for velocity
           dyd = vel_alpha * dyd + (1.0 - vel_alpha) * dyd_prev;
           dyd_prev = dyd;
           
@@ -869,7 +877,7 @@ int main(int argc, char* argv[]){
           
           // Acceleration smoothing (more aggressive since it's noisier)
           static Eigen::Vector4d ddyd_prev = Eigen::Vector4d::Zero();
-          const double accel_alpha = 0.5; // higher smoothing for acceleration
+          const double accel_alpha = 0.8; // higher smoothing for acceleration
           ddyd = accel_alpha * ddyd + (1.0 - accel_alpha) * ddyd_prev;
           ddyd_prev = ddyd;
           
@@ -937,7 +945,7 @@ int main(int argc, char* argv[]){
     KD_diag << 0.2, 0.2, 0.2, 0.2; // Un poco más agresivas que antes
     Eigen::MatrixXd KD = KD_diag.asDiagonal();
     
-    lbd << 1.9, 1.5, 3.1, 2.9;
+    lbd << 28.5, 20.5, 35.5, 29.0;  // Aumentados para mayor amortiguamiento (reduce oscilaciones)
 
     // -----------------------------------------------------------------------
     // 2. REFERENCIAS CARTESIANAS
@@ -996,11 +1004,53 @@ int main(int argc, char* argv[]){
     Eigen::Matrix4d C_mat = Codom(q.data(), dq_p.data()); 
 
     // -----------------------------------------------------------------------
-    // 6. LEY DE CONTROL SLOTINE COMPLETA
+    // 6. LEY DE CONTROL SUPER-TWISTING (STA)
     // -----------------------------------------------------------------------
-    // u = M*ddq_r + C(q,dq)*dq_r + G - KD*s
     
-    u = M_mat * ddq_r + C_mat * dq_r + G_vec - KD * s;
+    // A. Configuración de Ganancias STA
+    // k1: "Empuje" proporcional (Maneja la velocidad de convergencia)
+    // k2: "Memoria" integral (Mata el error estacionario y perturbaciones)
+    // Regla de dedo: k1 suele ser aprox 1.5 * sqrt(k2)
+    
+    Eigen::VectorXd k1(4); k1 << 0.025, 0.025, 0.025, 0.025;  // Ganancia Raiz (reducida para menos chattering)
+    Eigen::VectorXd k2(4); k2 << 0.01, 0.01, 0.01, 0.007;  // Ganancia Integral (reducida)
+    //k2.setZero(); // No integral en la 3ra articulación (vertical) para evitar drift
+    
+    double dt = 0.001; // Tu paso de tiempo (importante para la integral)
+
+    // B. Variables de Estado (Deben persistir entre ciclos)
+    // "static" hace que no se borren al salir de la función/loop
+    static Eigen::VectorXd z_integral = Eigen::VectorXd::Zero(4); 
+    static bool is_initialized = false;
+    if (!is_initialized) { z_integral.setZero(); is_initialized = true; }
+
+    // C. Cálculo del Super-Twisting
+    Eigen::VectorXd u_sta(4);
+    
+    for (int i = 0; i < 4; i++) {
+        double s_val = s(i);
+        double sign_s = (s_val > 0) ? 1.0 : ((s_val < 0) ? -1.0 : 0.0);
+        
+        // 1. Término Integral (z_dot = -k2 * sign(s))
+        // Esto acumula fuerza hasta vencer la fricción/error
+        z_integral(i) += ( -k2(i) * sign_s ) * dt;
+        
+        // Saturación del integrador (Anti-windup de seguridad)
+        // Evita que acumule demasiado si bloqueas el robot
+        double int_limit = 10; 
+        if (z_integral(i) > int_limit) z_integral(i) = int_limit;
+        if (z_integral(i) < -int_limit) z_integral(i) = -int_limit;
+
+        // 2. Término Proporcional No-Lineal (-k1 * sqrt(|s|) * sign(s))
+        double term_sqrt = -k1(i) * std::sqrt(std::abs(s_val)) * sign_s;
+        
+        // Total STA
+        u_sta(i) = term_sqrt + z_integral(i);
+    }
+
+    // D. Ley de Control Final (Slotine + STA)
+    // Reemplazamos "- KD * s" por "+ u_sta"
+    u = M_mat * ddq_r + C_mat * dq_r + G_vec + u_sta;
     //u = G_vec;
     dbg("u");
     dbg(u);
@@ -1097,9 +1147,12 @@ int main(int argc, char* argv[]){
     }//else printf("%.3f %.2f %.2f %.2f %.2f %d %d %d %d\n",(float)t,(float)q(0),(float)q(1),(float)q(2),(float)q(3),dxl1_cur,dxl2_cur,dxl3_cur,dxl4_cur);
     else{
       //outfile<<t<<", "<<q(0)<<", "<<q(1)<<", "<<q(2)<<", "<<q(3)<<", "<<dq(0)<<", "<<dq(1)<<", "<<dq(2)<<", "<<dq(3)<<", "<<dxl1_cur<<", "<<dxl2_cur<<", "<<dxl3_cur<<", "<<dxl4_cur<<"\n";
-      // Log format: t, y0-3(measured), yd0-3(desired), dq0-3, cur1-4
+      // Log format: t, y0-3(measured), yd0-3(desired), dy0-3(measured vel), dyd0-3(desired vel), u0-3(control), dq0-3, cur1-4
       outfile<<t<<", "<<y(0)<<", "<<y(1)<<", "<<y(2)<<", "<<y(3)<<", "
              <<yd(0)<<", "<<yd(1)<<", "<<yd(2)<<", "<<yd(3)<<", "
+             <<dy(0)<<", "<<dy(1)<<", "<<dy(2)<<", "<<dy(3)<<", "
+             <<dyd(0)<<", "<<dyd(1)<<", "<<dyd(2)<<", "<<dyd(3)<<", "
+             <<u(0)<<", "<<u(1)<<", "<<u(2)<<", "<<u(3)<<", "
              <<dq(0)<<", "<<dq(1)<<", "<<dq(2)<<", "<<dq(3)<<", "
              <<dxl1_cur<<", "<<dxl2_cur<<", "<<dxl3_cur<<", "<<dxl4_cur<<"\n";
       //outfile<<t<<" Hola\n";
@@ -1483,41 +1536,40 @@ Eigen::Matrix4d Modom(const double* q, const double* dq){
   double t14 = sin(t8);
   double t15 = q2+t7;
   double t17 = t7*2.0;
-  double t19 = t4*6.3984E-4;
-  double t22 = t4*3.1992E-4;
-  double t25 = t3*5.493727360337718E-4;
-  double t26 = t6*2.908962722219361E-3;
+  double t20 = t4*1.4136E-4;
+  double t21 = t4*7.068E-5;
+  double t25 = t3*3.499807360337718E-4;
+  double t26 = t6*1.845538722219361E-3;
   double t28 = t2*1.193151358043172E-5;
   double t31 = t5*1.779165378009676E-6;
   double t16 = q4+t15;
-  double t18 = t14*3.3024E-4;
-  double t20 = t12*6.192E-5;
-  double t23 = t22+2.274E-4;
+  double t18 = t14*7.296E-5;
+  double t22 = t12*1.368E-5;
+  double t23 = t21+1.671E-4;
   double t27 = -t26;
   double t29 = t13*4.69799175674762E-6;
   double t30 = -t28;
   double t32 = t11*1.158265040945455E-8;
-  double t21 = -t18;
+  double t19 = -t18;
   double t33 = -t32;
-  double t24 = t20+t21+t23;
+  double t24 = t19+t22+t23;
   double t34 = t29+t33;
-  double t35 = t19+t20+t21+t25+t27+2.889125954088295E-3;
+  double t35 = t19+t20+t22+t25+t27+1.798633954088295E-3;
   double t36 = t30+t31+t34;
-  M(0,0) = t20+t21+t22+t25+t27+cos(q4*2.0+t17)*3.87E-5+cos(q4+t17)*3.1992E-4-cos(t9)*2.437926487945131E-3+cos(t15)*5.417560586140266E-4+cos(t16)*6.192E-5+cos(t17)*1.209706308500551E-3+sin(t9)*8.171973250954777E-4+sin(t15)*2.910390849235564E-3+sin(t16)*3.3024E-4+sin(t17)*2.704800864809753E-6+4.595021894838256E-3;
+  M(0,0) = t19+t21+t22+t25+t27+cos(q4*2.0+t17)*8.55E-6+cos(q4+t17)*7.068E-5-cos(t9)*1.908358487945131E-3+cos(t15)*3.423640586140266E-4+cos(t16)*1.368E-5+cos(t17)*6.946103085005514E-4+sin(t9)*6.113733250954777E-4+sin(t15)*1.846966849235564E-3+sin(t16)*7.296E-5+sin(t17)*2.704800864809753E-6+3.481615894838256E-3;
   M(0,1) = t36;
   M(0,2) = t34;
   M(1,0) = t36;
-  M(1,1) = t3*1.098745472067544E-3-t6*5.817925444438723E-3+t12*1.2384E-4-t14*6.6048E-4+t19+8.389310674730516E-3;
+  M(1,1) = t3*6.999614720675437E-4-t6*3.691077444438723E-3+t12*2.736E-5-t14*1.4592E-4+t20+6.162498674730516E-3;
   M(1,2) = t35;
   M(1,3) = t24;
   M(2,0) = t34;
   M(2,1) = t35;
-  M(2,2) = t19+2.889125954088295E-3;
+  M(2,2) = t20+1.798633954088295E-3;
   M(2,3) = t23;
   M(3,1) = t24;
   M(3,2) = t23;
-  M(3,3) = 2.274E-4;
-
+  M(3,3) = 1.671E-4;
 
   return M;
 }
@@ -1549,13 +1601,13 @@ Eigen::Matrix4d Codom(const double* q, const double* dq){
   double t16 = sin(t6);
   double t17 = q2+t5;
   double t21 = t5*2.0;
-  double t33 = t4*3.1992E-4;
-  double t34 = t4*1.5996E-4;
-  double t37 = dq4*t4*(-3.1992E-4);
-  double t56 = t3*2.746863680168859E-4;
-  double t57 = t3*5.493727360337718E-4;
-  double t58 = t2*2.908962722219361E-3;
-  double t59 = t2*1.454481361109681E-3;
+  double t32 = t4*7.068E-5;
+  double t33 = t4*3.534E-5;
+  double t37 = dq4*t4*(-7.068E-5);
+  double t56 = t3*1.749903680168859E-4;
+  double t57 = t3*3.499807360337718E-4;
+  double t58 = t2*1.845538722219361E-3;
+  double t59 = t2*9.227693611096807E-4;
   double t18 = cos(t17);
   double t19 = q4+t17;
   double t20 = sin(t17);
@@ -1563,38 +1615,38 @@ Eigen::Matrix4d Codom(const double* q, const double* dq){
   double t25 = q4+t21;
   double t26 = sin(t21);
   double t28 = t9+t21;
-  double t30 = t14*3.3024E-4;
-  double t31 = t14*1.6512E-4;
-  double t32 = t16*6.192E-5;
-  double t35 = t16*3.096E-5;
+  double t30 = t14*7.296E-5;
+  double t31 = t14*3.648E-5;
+  double t34 = t16*1.368E-5;
+  double t35 = t16*6.84E-6;
   double t66 = dq2*t13*4.69799175674762E-6;
   double t67 = dq3*t13*4.69799175674762E-6;
   double t69 = dq2*t15*1.158265040945455E-8;
   double t70 = dq3*t15*1.158265040945455E-8;
-  double t73 = t10*8.171973250954777E-4;
-  double t74 = t11*2.437926487945131E-3;
+  double t73 = t10*6.113733250954777E-4;
+  double t74 = t11*1.908358487945131E-3;
   double t22 = cos(t19);
   double t23 = sin(t19);
   double t27 = sin(t25);
   double t29 = sin(t28);
-  double t53 = t30+t32+t33;
-  double t60 = t20*2.708780293070133E-4;
-  double t61 = t20*5.417560586140266E-4;
-  double t63 = t18*2.910390849235564E-3;
-  double t64 = t18*1.455195424617782E-3;
+  double t53 = t30+t32+t34;
+  double t60 = t20*1.711820293070133E-4;
+  double t61 = t20*3.423640586140266E-4;
+  double t63 = t18*1.846966849235564E-3;
+  double t64 = t18*9.234834246177818E-4;
   double t68 = t24*2.704800864809753E-6;
-  double t75 = t26*1.209706308500551E-3;
-  double t78 = dq1*t26*(-1.209706308500551E-3);
-  double t81 = t30+t32+t57+t58;
-  double t38 = t22*3.3024E-4;
-  double t39 = t22*1.6512E-4;
-  double t40 = t23*6.192E-5;
-  double t43 = t23*3.096E-5;
-  double t44 = t27*3.1992E-4;
-  double t45 = t27*1.5996E-4;
-  double t47 = t29*3.87E-5;
-  double t51 = dq1*t27*(-3.1992E-4);
-  double t52 = dq1*t29*(-3.87E-5);
+  double t75 = t26*6.946103085005514E-4;
+  double t78 = dq1*t26*(-6.946103085005514E-4);
+  double t81 = t30+t34+t57+t58;
+  double t38 = t22*7.296E-5;
+  double t39 = t22*3.648E-5;
+  double t41 = t23*1.368E-5;
+  double t42 = t23*6.84E-6;
+  double t44 = t27*7.068E-5;
+  double t45 = t27*3.534E-5;
+  double t47 = t29*8.55E-6;
+  double t51 = dq1*t27*(-7.068E-5);
+  double t52 = dq1*t29*(-8.55E-6);
   double t54 = dq4*t53;
   double t62 = -t61;
   double t65 = -t64;
@@ -1603,31 +1655,31 @@ Eigen::Matrix4d Codom(const double* q, const double* dq){
   double t76 = -t75;
   double t82 = dq2*t81;
   double t83 = dq3*t81;
-  double t41 = -t39;
-  double t42 = -t40;
+  double t40 = -t39;
+  double t43 = -t41;
   double t46 = -t44;
   double t50 = -t47;
   double t55 = -t54;
   double t84 = -t83;
-  double t79 = t31+t34+t35+t41+t43+t45+t47;
-  double t85 = t31+t35+t41+t43+t44+t47+t56+t59+t60+t65+t71+t75;
-  double t86 = t38+t42+t46+t50+t62+t63+t68+t73+t74+t76;
+  double t79 = t31+t33+t35+t40+t42+t45+t47;
+  double t85 = t31+t35+t40+t42+t44+t47+t56+t59+t60+t65+t71+t75;
+  double t86 = t38+t43+t46+t50+t62+t63+t68+t73+t74+t76;
   double t80 = dq1*t79;
   C(0,0) = -dq4*t79+dq2*t86-dq3*t85;
-  C(0,1) = t51+t52+t66+t67+t69+t70+t72+t78-dq1*t20*5.417560586140266E-4-dq1*t23*6.192E-5+dq1*t38+dq1*t63+dq1*t73+dq1*t74+dq2*cos(q2)*1.779165378009676E-6+dq2*sin(q2)*1.193151358043172E-5;
-  C(0,2) = t51+t52+t66+t67+t69+t70+t72+t78-dq1*t2*1.454481361109681E-3-dq1*t3*2.746863680168859E-4-dq1*t14*1.6512E-4-dq1*t16*3.096E-5-dq1*t20*2.708780293070133E-4-dq1*t23*3.096E-5+dq1*t39+dq1*t64;
+  C(0,1) = t51+t52+t66+t67+t69+t70+t72+t78-dq1*t20*3.423640586140266E-4-dq1*t23*1.368E-5+dq1*t38+dq1*t63+dq1*t73+dq1*t74+dq2*cos(q2)*1.779165378009676E-6+dq2*sin(q2)*1.193151358043172E-5;
+  C(0,2) = t51+t52+t66+t67+t69+t70+t72+t78-dq1*t2*9.227693611096807E-4-dq1*t3*1.749903680168859E-4-dq1*t14*3.648E-5-dq1*t16*6.84E-6-dq1*t20*1.711820293070133E-4-dq1*t23*6.84E-6+dq1*t39+dq1*t64;
   C(0,3) = -t80;
   C(1,0) = -dq1*t86;
   C(1,1) = t55+t84;
   C(1,2) = t55-t82+t84;
-  C(1,3) = t12*(t4*3.1E+1+t14*3.2E+1+t16*6.0)*(-1.032E-5);
+  C(1,3) = t12*(t4*3.1E+1+t14*3.2E+1+t16*6.0)*(-2.28E-6);
   C(2,0) = dq1*t85;
   C(2,1) = t37+t82;
   C(2,2) = t37;
-  C(2,3) = t4*t12*(-3.1992E-4);
+  C(2,3) = t4*t12*(-7.068E-5);
   C(3,0) = t80;
-  C(3,1) = dq3*t33+dq2*t53;
-  C(3,2) = t33*(dq2+dq3);
+  C(3,1) = dq3*t32+dq2*t53;
+  C(3,2) = t32*(dq2+dq3);
 
   return C;
 }
@@ -1637,27 +1689,23 @@ Eigen::Vector4d godom(const double* q, const double* dq){
   double q2 = q[1];
   double q3 = q[2];
   double q4 = q[3];
+  Eigen::Vector4d G;
+  G.setZero();
   double t2 = cos(q4);
   double t3 = sin(q4);
   double t4 = q2+q3;
   double t5 = cos(t4);
   double t6 = sin(t4);
-  double t7 = t2*t5*2.53098E-2;
-  double t8 = t3*t6*2.53098E-2;
+  double t7 = t2*t5*5.5917E-3;
+  double t8 = t3*t6*5.5917E-3;
   double t10 = t6*2.918734589363309E-4;
-  double t12 = t5*2.229994474061438E-1;
+  double t12 = t5*1.414979674061438E-1;
   double t9 = -t7;
   double t11 = -t10;
   double t13 = -t12;
-  Eigen::Vector4d G;
-  G.setZero();
-  G(1) = t8+t9+t11+t13-1.382856941792986E+37*sin(q2+atan(1.586676518285441E-1))*3.022939640710205E-38;
+  G(1) = t8+t9+t11+t13-1.099839451091507E+37*sin(q2+atan(1.512887942244355E-1))*3.022939640710205E-38;
   G(2) = t8+t9+t11+t13;
-  G(3) = cos(q4+t4)*(-2.53098E-2);
-
-
-
-
+  G(3) = cos(q4+t4)*(-5.5917E-3);
 
   return G;
 }

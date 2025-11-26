@@ -16,6 +16,8 @@ include_directories(include)
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories("/usr/local/include/dynamixel_sdk")
 
+find_package(pinocchio REQUIRED)
+
 # --- Original Monolithic Executable (Reference) ---
 add_executable(test_arm_control src/CNL_L6_act_2.cpp)
 target_compile_definitions(test_arm_control PRIVATE linux HDAPIENTRY= HDCALLBACK=)
@@ -44,3 +46,4 @@ target_link_libraries(modular_arm_control PRIVATE
     ncurses 
     tinfo
 )
+
