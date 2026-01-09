@@ -67,7 +67,7 @@ cmake --build build -j
 ## How to Run
 
 ```bash
-./build/open_haptic
+./build/open_haptic 25 0 10 0.9
 ```
 
 ## Controls
