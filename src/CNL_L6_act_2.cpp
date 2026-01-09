@@ -1032,11 +1032,10 @@ int main(int argc, char* argv[]){
         double sign_s = (s_val > 0) ? 1.0 : ((s_val < 0) ? -1.0 : 0.0);
         
         // 1. Término Integral (z_dot = -k2 * sign(s))
-        // Esto acumula fuerza hasta vencer la fricción/error
-        z_integral(i) += ( -k2(i) * sign_s ) * dt;
+        z_integral(i) += ( -k2(i) * sign_s ) * dt -z_integral(i)*0.5*dt;
         
         // Saturación del integrador (Anti-windup de seguridad)
-        // Evita que acumule demasiado si bloqueas el robot
+
         double int_limit = 10; 
         if (z_integral(i) > int_limit) z_integral(i) = int_limit;
         if (z_integral(i) < -int_limit) z_integral(i) = -int_limit;
@@ -1051,6 +1050,10 @@ int main(int argc, char* argv[]){
     // D. Ley de Control Final (Slotine + STA)
     // Reemplazamos "- KD * s" por "+ u_sta"
     u = M_mat * ddq_r + C_mat * dq_r + G_vec + u_sta;
+    if(abs((y-yd).norm())<0.005){
+      z_integral.setZero(); // reset integrador si el error es muy bajo
+      u.setZero();
+    }
     //u = G_vec;
     dbg("u");
     dbg(u);
@@ -1122,27 +1125,34 @@ int main(int argc, char* argv[]){
              (float)(y(1)-yd(1))*1000, 
              (float)(y(2)-yd(2))*1000, 
              (float)(y(3)-yd(3))*57.3);
+      printf("| integral: X=%.2f Y=%.2f Z=%.2f θ=%.2f ",
+             (float)z_integral(0),
+             (float)z_integral(1),
+             (float)z_integral(2),
+             (float)z_integral(3));
       fflush(stdout);
     }
     
     // Diagnostic print when teleop is active (print first 20 cycles after arming for debugging)
     static int print_counter = 0;
-    if(teleop_active && print_counter < 20){
-      printf("\n[DEBUG] t=%.3f | y=[%.4f %.4f %.4f %.4f] | yd=[%.4f %.4f %.4f %.4f] | err=[%.4f %.4f %.4f %.4f] | cur=[%d %d %d %d]\n",
+    if(teleop_active && print_counter < 40){
+      printf("\n[DEBUG] t=%.3f | y=[%.4f %.4f %.4f %.4f] | yd=[%.4f %.4f %.4f %.4f] | err=[%.4f %.4f %.4f %.4f] | integral=[%.4f %.4f %.4f %.4f] | cur=[%d %d %d %d]\n",
              (float)t,
              (float)y(0), (float)y(1), (float)y(2), (float)y(3),
              (float)yd(0), (float)yd(1), (float)yd(2), (float)yd(3),
              (float)(y(0)-yd(0)), (float)(y(1)-yd(1)), (float)(y(2)-yd(2)), (float)(y(3)-yd(3)),
+             (float)z_integral(0), (float)z_integral(1), (float)z_integral(2), (float)z_integral(3),
              dxl1_cur, dxl2_cur, dxl3_cur, dxl4_cur);
       print_counter++;
     }
     
     if(abs(dxl1_cur)>curr_peak||abs(dxl2_cur)>curr_peak||abs(dxl3_cur)>curr_peak||abs(dxl4_cur)>curr_peak){
       printf("Unsafe %d %d %d %d\n",dxl1_cur,dxl2_cur,dxl3_cur,dxl4_cur);
-      printf("[UNSAFE] y=[%.4f %.4f %.4f %.4f] | yd=[%.4f %.4f %.4f %.4f] | err=[%.4f %.4f %.4f %.4f]\n",
+      printf("[UNSAFE] y=[%.4f %.4f %.4f %.4f] | yd=[%.4f %.4f %.4f %.4f] | err=[%.4f %.4f %.4f %.4f] | integral=[%.4f %.4f %.4f %.4f]\n",
              (float)y(0), (float)y(1), (float)y(2), (float)y(3),
              (float)yd(0), (float)yd(1), (float)yd(2), (float)yd(3),
-             (float)(y(0)-yd(0)), (float)(y(1)-yd(1)), (float)(y(2)-yd(2)), (float)(y(3)-yd(3)));
+             (float)(y(0)-yd(0)), (float)(y(1)-yd(1)), (float)(y(2)-yd(2)), (float)(y(3)-yd(3)),
+             (float)z_integral(0), (float)z_integral(1), (float)z_integral(2), (float)z_integral(3));
       shutdown_requested=1;
     }//else printf("%.3f %.2f %.2f %.2f %.2f %d %d %d %d\n",(float)t,(float)q(0),(float)q(1),(float)q(2),(float)q(3),dxl1_cur,dxl2_cur,dxl3_cur,dxl4_cur);
     else{
