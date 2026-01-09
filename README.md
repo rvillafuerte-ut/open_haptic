@@ -1,59 +1,73 @@
 # Modular Robot Control System
 
-This project implements a teleoperation control system for a robotic arm using Dynamixel motors and a Phantom Omni haptic device. The code has been refactored into modular components for better maintainability and extensibility.
+This project implements a teleoperation control system for a robotic arm using Dynamixel motors and a Phantom Omni haptic device.
 
-## Project Structure
+## Dependencies and Installation
 
-- **src/**: Contains implementation files (.cpp)
-- **include/**: Contains header files (.h) with function declarations and documentation
-- **CMakeLists.txt**: Build configuration
+### System Requirements
+- Ubuntu 20.04 or later
+- CMake 3.10 or higher
+- GCC/G++ compiler with C++11 support
 
-## Modules
+### Required Libraries
 
-1. **Dynamixel Controller** (`dynamixel_controller.h`)
-   - Handles low-level motor communication (read/write)
-   - Configures operating modes and limits
-   - Converts between ticks and radians
+#### 1. Dynamixel SDK
+Install the official Dynamixel SDK for motor communication:
+```bash
+git clone https://github.com/ROBOTIS-GIT/DynamixelSDK.git
+cd DynamixelSDK/c++/build/linux64
+make
+sudo make install
+```
 
-2. **Haptic Controller** (`haptic_controller.h`)
-   - Interfaces with the Phantom Omni device
-   - Runs a high-frequency servo loop (1kHz)
-   - Provides position and button data
+#### 2. OpenHaptics SDK
+Download and install the OpenHaptics SDK (HD API) from 3D Systems:
+- Visit: https://support.3dsystems.com/s/article/OpenHaptics-for-Linux-Developer-Edition-v34
+- Extract and install:
+```bash
+tar -xzf openhaptics_*.tar.gz
+cd openhaptics_*
+sudo ./install
+```
 
-3. **Robot Controller** (`robot_controller.h`)
-   - Implements Forward Kinematics and Jacobian
-   - Computes control torques (Computed Torque Control)
-   - Contains the dynamics model (OMDyn)
+Set environment variables:
+```bash
+export OPENHAPTICS_INCLUDE_DIRS=/usr/include/HD
+export OPENHAPTICS_LIB_DIR=/usr/lib64
+```
 
-4. **Trajectory Generator** (`trajectory_generator.h`)
-   - Generates desired paths from haptic input
-   - Supports circular trajectories and keyboard control
-   - Applies filtering and workspace limits
+#### 3. Eigen3
+Install the Eigen linear algebra library:
+```bash
+sudo apt-get update
+sudo apt-get install libeigen3-dev
+export EIGEN3_INCLUDE_DIR=/usr/include/eigen3
+```
 
-5. **Gripper Controller** (`gripper_controller.h`)
-   - Controls the end-effector (ID 15)
-   - Handles open/close logic and calibration
+#### 4. Additional Dependencies
+```bash
+sudo apt-get install build-essential cmake git
+```
 
-6. **Safety Monitor** (`safety_monitor.h`)
-   - Checks for current overloads and workspace violations
-   - Triggers emergency stops
-
-7. **Utilities** (`utilities.h`)
-   - Helper functions for keyboard input and display
+### USB Configuration
+Configure USB permissions for Dynamixel and haptic device:
+```bash
+sudo cp 99-haptic-devices.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
 
 ## How to Build
 
 ```bash
-mkdir build
-cd build
-cmake ..
-make
+cmake -S . -B build
+cmake --build build -j
 ```
 
 ## How to Run
 
 ```bash
-./build/modular_arm_control 25 0 10 0.9
+./build/open_haptic
 ```
 
 ## Controls
